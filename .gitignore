@@ -1,6 +1,9 @@
+/agent-council-reports/
 /.bundle/
-/vendor/bundle/
-/pkg/
-/*.gem
 /.claude/
+/*.gem
 Gemfile.lock
+/.idea/
+/pkg/
+/untracked/
+/vendor/bundle/

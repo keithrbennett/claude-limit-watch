@@ -7,8 +7,8 @@
 #   CLAUDE_LIMIT_WATCH_FILE=<history-file> exe/claude-limit-watch   # in another
 #
 # The scenario: 3h20m into the window at 60% used, after an early burst and a
-# recent surge, so the 10m and 30m rows run out (yellow, with red locked-out
-# time) while 1h, 2h and all last to the end (green).
+# recent surge, so the 10m and 30m rows run out (green time left, then red
+# locked-out time) while 1h, 2h and all last to the end (all green).
 #
 # It holds the recorder lock, so the viewer shows it as the running recorder
 # and doesn't start a real one (which would append real readings).

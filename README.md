@@ -85,8 +85,7 @@ untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
       all    ███████████████████████████████████████████▒▒▒▒▒XX│ limit at 01:59 · 10m locked out
 
              █ time so far · ▒ time left at that rate · X locked out (limit reached) · │ window ends
-
-      ────────────────────────────────────────────────────────────────────────────────────────────────
+      ──────────────────────────────────────────────────────────────────────────────────────────────
       q to quit · stop the recorder with: claude-limit-watch stop
       claude-limit-watch 0.1.0 · https://github.com/keithrbennett/claude-limit-watch
       Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
@@ -105,8 +104,7 @@ untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
   least one column whenever there's any), and │ is the end of the window.
   So a bar that lasts to the end is █ then ▒, and one that runs out is █,
   ▒, then X (in red text). The fills tell the parts apart without color
-  too. The
-  text gives the hit time and how long you'd be locked out ("limit at
+  too. The text gives the hit time and how long you'd be locked out ("limit at
   01:49 · 20m locked out"), or how much you'd have used by the end ("lasts
   · 88% used at the end"). A row whose history doesn't reach back the
   whole look-back is labeled with what it covers (e.g. `1h50m`); one with
@@ -158,8 +156,8 @@ when its pace is 2x or more (e.g. 20% used in the first 20 minutes is about
 constants at the top of `lib/claude_limit_watch.rb`.
 
 Colors come from the 256-color palette (green 114, yellow 220, red 196,
-dark red 52, lavender 141), since terminal themes often remap the 16 basic colors (yellow
-showing as orange, for example). They're off when `NO_COLOR` is set.
+dark red 52, lavender 141), since terminal themes often remap the 16 basic
+colors (yellow showing as orange, for example). They're off when `NO_COLOR` is set.
 
 ## How it works
 

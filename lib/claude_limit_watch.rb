@@ -63,6 +63,7 @@ module ClaudeLimitWatch
   LEFT_CHAR = '▒'
   LOCKED_CHAR = 'X'
   LOCKED_COLOR = [1, 38, 5, 196, 48, 5, 52].freeze # bold red X on a dark red background
+  VERSION_LINE = "claude-limit-watch #{VERSION} · #{HOMEPAGE}"
   RATE_COL = 23 # width of the burn-rate column
   @rate_window_min = DEFAULT_RATE_WINDOW_MIN # set from the command line
 
@@ -459,7 +460,7 @@ module ClaudeLimitWatch
     puts color(message, :dim)
     puts color("Claude 5-hour limit, from #{HISTORY_FILE}; burn rate over the last " \
                "#{num(@rate_window_min)}m. Ctrl-C to quit (the recorder keeps running).", :dim)
-    puts color("claude-limit-watch #{VERSION}: #{HOMEPAGE}", :dim)
+    puts color(VERSION_LINE, :dim)
     puts color(header, :dim)
 
     cache = HistoryCache.new
@@ -599,6 +600,13 @@ module ClaudeLimitWatch
 
   # once: printing a single copy (--once), so use a fixed width, don't
   # truncate, and leave out the quit instruction.
+  # The projection bars' key: each symbol drawn as it appears in the bars.
+  def legend
+    "         #{paint(SO_FAR_CHAR, *ACCENT_COLOR)}#{paint(' time so far · ', 90)}#{paint(LEFT_CHAR, COLORS[:ok])}" \
+      "#{paint(' time left at that rate · ', 90)}#{paint(LOCKED_CHAR, *LOCKED_COLOR)}" \
+      "#{paint(' locked out (limit reached) · │ window ends', 90)}"
+  end
+
   def dashboard_lines(st, now, once: false)
     w = once ? 100 : term_width
     bar_w = (w - 47).clamp(10, 50) # leaves room for the projection rows' text
@@ -628,10 +636,7 @@ module ClaudeLimitWatch
         lines << ''
         lines.concat(projection_bar_lines(st[:table], p, bar_w, now))
         lines << ''
-        # Each symbol drawn as it appears in the bars.
-        lines << "         #{paint(SO_FAR_CHAR, *ACCENT_COLOR)}#{paint(' time so far · ', 90)}#{paint(LEFT_CHAR, COLORS[:ok])}" \
-                 "#{paint(' time left at that rate · ', 90)}#{paint(LOCKED_CHAR, *LOCKED_COLOR)}" \
-                 "#{paint(' locked out (limit reached) · │ window ends', 90)}"
+        lines << legend
       elsif p[:util] < 100
         lines << ''
         lines << paint("  Projections start #{MIN_ELAPSED_MIN}m into the window " \
@@ -647,19 +652,19 @@ module ClaudeLimitWatch
       gap = st[:last_t] ? "No new readings for #{dur_m(now - st[:last_t])}. " : ''
       lines << paint("  #{gap}#{RESTART_HINT}", 33)
     end
-    lines << ''
     recorder =
       if st[:recorder_pid]
         "Recorder running (pid #{st[:recorder_pid]}), writing to #{home_relative(HISTORY_FILE)}"
       else
         "Recorder not running (history file: #{home_relative(HISTORY_FILE)})"
       end
-    lines << paint("  #{'─' * [bar_w + 46, w - 4].min}", 90)
+    rule_w = [[legend.gsub(ANSI_RE, '').size - 2, w - 4].min, 0].max # ends where the legend does
+    lines << paint("  #{'─' * rule_w}", 90)
     unless once
       stop = st[:recorder_pid] ? ' · stop the recorder with: claude-limit-watch stop' : ''
       lines << paint("  q to quit#{stop}", 90)
     end
-    lines << paint("  claude-limit-watch #{VERSION} · #{HOMEPAGE}", 90)
+    lines << paint("  #{VERSION_LINE}", 90)
     lines << paint("  #{recorder}", 90)
     once ? lines : lines.map { |l| fit(l, w) }
   end
@@ -723,7 +728,7 @@ module ClaudeLimitWatch
       # Leave the stop instruction in the scrollback.
       pid = recorder_pid
       puts pid ? stop_hint(pid) : 'The recorder is not running.'
-      puts "claude-limit-watch #{VERSION}: #{HOMEPAGE}"
+      puts VERSION_LINE
       $stdout.flush
     end
     %w[INT TERM HUP].each { |sig| trap(sig) { exit 0 } }
@@ -764,7 +769,7 @@ module ClaudeLimitWatch
           --lines: one line per reading instead of the full-screen panel.
           --once:  print the panel once and exit (for copying); doesn't start the recorder.
 
-    claude-limit-watch #{VERSION}: #{HOMEPAGE}
+    #{VERSION_LINE}
   TEXT
 
   def number_arg(arg, default, min)
