@@ -78,17 +78,18 @@ untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
 
       If usage continues at the rate of the last ... (all: since 21:10):
 
-      10m    ██████████████████████████████████████████████████│ limit at 01:49 · 20m locked out
-      30m    ██████████████████████████████████████████████████│ limit at 01:47 · 23m locked out
-      1h     ██████████████████████████████████████████████████│ limit at 01:49 · 20m locked out
-      2h     ██████████████████████████████████████████████████│ limit at 02:01 · 8m locked out
-      all    ██████████████████████████████████████████████████│ limit at 01:59 · 10m locked out
+      10m    ███████████████████████████████████████████▒▒▒▒XXX│ limit at 01:49 · 20m locked out
+      30m    ███████████████████████████████████████████▒▒▒XXXX│ limit at 01:47 · 23m locked out
+      1h     ███████████████████████████████████████████▒▒▒▒XXX│ limit at 01:49 · 20m locked out
+      2h     ███████████████████████████████████████████▒▒▒▒▒▒X│ limit at 02:01 · 8m locked out
+      all    ███████████████████████████████████████████▒▒▒▒▒XX│ limit at 01:59 · 10m locked out
 
-             █ time so far · █ time left at that rate · █ locked out (limit reached) · │ window ends
-             Time left is green if that rate lasts to the end, yellow if it runs out first
+             █ time so far · ▒ time left at that rate · X locked out (limit reached) · │ window ends
 
-      Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
+      ────────────────────────────────────────────────────────────────────────────────────────────────
       q to quit · stop the recorder with: claude-limit-watch stop
+      claude-limit-watch 0.1.0 · https://github.com/keithrbennett/claude-limit-watch
+      Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
 
 - **Heading**: a framed title in lavender; a terminal too narrow for it
   gets a plain one-line title.
@@ -98,10 +99,13 @@ untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
   last 10 minutes, 30 minutes, 1 hour, 2 hours (plus your rate window if
   different), or `all` (the average since the window started). Each bar is
   on the same time scale as the Time bar and lines up under it, in three
-  colored parts: lavender, the time so far; green or yellow, the time you
-  could keep working at that rate (green if it lasts to the end of the
-  window, yellow if it runs out); and red, the time you'd be locked out after hitting the limit (at least
-  one column whenever there's any), and │ is the end of the window. The
+  parts, each with its own color and fill: lavender █, the time so far;
+  green ▒, the time you could keep working at that rate; and bold red X's
+  on dark red, the time you'd be locked out after hitting the limit (at
+  least one column whenever there's any), and │ is the end of the window.
+  So a bar that lasts to the end is █ then ▒, and one that runs out is █,
+  ▒, then X (in red text). The fills tell the parts apart without color
+  too. The
   text gives the hit time and how long you'd be locked out ("limit at
   01:49 · 20m locked out"), or how much you'd have used by the end ("lasts
   · 88% used at the end"). A row whose history doesn't reach back the
@@ -117,8 +121,9 @@ untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
   window.
 - A failed check (expired token, 429, network) shows as a yellow line. If
   readings stop arriving (recorder not running), it says so.
-- The bottom lines show whether the recorder is running, its pid, the
-  history file it writes to, and how to stop it.
+- Below a rule, the bottom lines show how to quit and stop the recorder,
+  the version and project page, and whether the recorder is running, with
+  its pid and the history file it writes to.
 
 It checks for changes every second but redraws only when the text changes,
 about once a minute (times are shown to the minute), so you can select and
@@ -143,9 +148,8 @@ Durations here are h:mm. At the limit the outlook shows
 
 ## Levels
 
-On the panel, each projection bar is green if that rate lasts to the end of
-the window and yellow if it runs out first; red is used only for the
-locked-out time.
+On the panel, the time left at each rate is green, and red marks the
+time you'd be locked out; a row whose rate runs out also has red text.
 
 Each line in `--lines` output is green (OK), yellow (WARN) or red (URGENT):
 WARN when that rate hits the limit before the end of the window; URGENT
@@ -154,7 +158,7 @@ when its pace is 2x or more (e.g. 20% used in the first 20 minutes is about
 constants at the top of `lib/claude_limit_watch.rb`.
 
 Colors come from the 256-color palette (green 114, yellow 220, red 196,
-lavender 141), since terminal themes often remap the 16 basic colors (yellow
+dark red 52, lavender 141), since terminal themes often remap the 16 basic colors (yellow
 showing as orange, for example). They're off when `NO_COLOR` is set.
 
 ## How it works

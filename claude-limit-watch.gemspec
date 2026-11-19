@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
                        'dashboard projecting when the 5-hour usage limit will be reached at recent burn rates.'
   spec.license       = 'MIT'
 
-  spec.homepage      = 'https://github.com/keithrbennett/claude-limit-watch'
+  spec.homepage      = ClaudeLimitWatch::HOMEPAGE
   spec.required_ruby_version = '>= 2.6'
 
   spec.files = Dir['lib/**/*.rb', 'exe/*', 'docs/images/*', 'README.md', 'CHANGELOG.md', 'LICENSE']

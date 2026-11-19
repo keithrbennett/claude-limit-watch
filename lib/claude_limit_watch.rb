@@ -57,6 +57,12 @@ module ClaudeLimitWatch
   # 256-color codes: terminal themes often remap the 16 basic colors (yellow
   # showing as orange, say), but generally leave these alone.
   COLORS = { ok: '38;5;114', projected: '38;5;220', urgent: '38;5;196', dim: 90 }.freeze # green, yellow, red
+  # Projection bar fills: distinct shapes, so the parts can be told apart
+  # without color too (NO_COLOR, piped --once).
+  SO_FAR_CHAR = '█'
+  LEFT_CHAR = '▒'
+  LOCKED_CHAR = 'X'
+  LOCKED_COLOR = [1, 38, 5, 196, 48, 5, 52].freeze # bold red X on a dark red background
   RATE_COL = 23 # width of the burn-rate column
   @rate_window_min = DEFAULT_RATE_WINDOW_MIN # set from the command line
 
@@ -453,6 +459,7 @@ module ClaudeLimitWatch
     puts color(message, :dim)
     puts color("Claude 5-hour limit, from #{HISTORY_FILE}; burn rate over the last " \
                "#{num(@rate_window_min)}m. Ctrl-C to quit (the recorder keeps running).", :dim)
+    puts color("claude-limit-watch #{VERSION}: #{HOMEPAGE}", :dim)
     puts color(header, :dim)
 
     cache = HistoryCache.new
@@ -622,12 +629,9 @@ module ClaudeLimitWatch
         lines.concat(projection_bar_lines(st[:table], p, bar_w, now))
         lines << ''
         # Each symbol drawn as it appears in the bars.
-        lines << "         #{paint('█', *ACCENT_COLOR)}#{paint(' time so far · ', 90)}#{paint('█', COLORS[:ok])}" \
-                 "#{paint(' time left at that rate · ', 90)}#{paint('█', COLORS[:urgent])}" \
+        lines << "         #{paint(SO_FAR_CHAR, *ACCENT_COLOR)}#{paint(' time so far · ', 90)}#{paint(LEFT_CHAR, COLORS[:ok])}" \
+                 "#{paint(' time left at that rate · ', 90)}#{paint(LOCKED_CHAR, *LOCKED_COLOR)}" \
                  "#{paint(' locked out (limit reached) · │ window ends', 90)}"
-        lines << "         #{paint('Time left is ', 90)}#{paint('green', COLORS[:ok])}" \
-                 "#{paint(' if that rate lasts to the end, ', 90)}#{paint('yellow', COLORS[:projected])}" \
-                 "#{paint(' if it runs out first', 90)}"
       elsif p[:util] < 100
         lines << ''
         lines << paint("  Projections start #{MIN_ELAPSED_MIN}m into the window " \
@@ -650,12 +654,14 @@ module ClaudeLimitWatch
       else
         "Recorder not running (history file: #{home_relative(HISTORY_FILE)})"
       end
+    lines << paint("  #{'─' * [bar_w + 46, w - 4].min}", 90)
+    unless once
+      stop = st[:recorder_pid] ? ' · stop the recorder with: claude-limit-watch stop' : ''
+      lines << paint("  q to quit#{stop}", 90)
+    end
+    lines << paint("  claude-limit-watch #{VERSION} · #{HOMEPAGE}", 90)
     lines << paint("  #{recorder}", 90)
-    return lines if once
-
-    stop = st[:recorder_pid] ? ' · stop the recorder with: claude-limit-watch stop' : ''
-    lines << paint("  q to quit#{stop}", 90)
-    lines.map { |l| fit(l, w) }
+    once ? lines : lines.map { |l| fit(l, w) }
   end
 
   # One bar per look-back window, on the same time scale as the Time bar and
@@ -671,21 +677,20 @@ module ClaudeLimitWatch
       label = (r[:label] == 'window' ? 'all' : r[:label]).ljust(6)
       next "  #{label} #{paint("not enough history yet (have #{dur_m(r[:have] * 60)})", 90)}" if r[:na]
 
-      # Two colors only: green if that rate lasts, yellow if it runs out. Red
-      # is kept for the locked-out time.
+      # Time left is always green; a rate that runs out is followed by red,
+      # the locked-out time, and its text is red too.
       runs_out = r[:eta_at] && r[:eta_at] < p[:resets]
-      color = COLORS[runs_out ? :projected : :ok]
       if runs_out
         hit = cells.call(r[:eta_at]).clamp(so_far, bar_w - 1) # leave at least one red cell
         locked = p[:resets] - [r[:eta_at], now].max
-        bar = paint('█' * so_far, *ACCENT_COLOR) + paint('█' * (hit - so_far), color) +
-              paint('█' * (bar_w - hit), COLORS[:urgent])
+        bar = paint(SO_FAR_CHAR * so_far, *ACCENT_COLOR) + paint(LEFT_CHAR * (hit - so_far), COLORS[:ok]) +
+              paint(LOCKED_CHAR * (bar_w - hit), *LOCKED_COLOR)
         text = "limit at #{clock(r[:eta_at])} · #{dur_m(locked)} locked out"
       else
-        bar = paint('█' * so_far, *ACCENT_COLOR) + paint('█' * (bar_w - so_far), color)
+        bar = paint(SO_FAR_CHAR * so_far, *ACCENT_COLOR) + paint(LEFT_CHAR * (bar_w - so_far), COLORS[:ok])
         text = "lasts · #{r[:end_pct].round}% used at the end"
       end
-      "  #{label} #{bar}#{paint('│', 90)} #{paint(text, color)}"
+      "  #{label} #{bar}#{paint('│', 90)} #{paint(text, COLORS[runs_out ? :urgent : :ok])}"
     end
   end
 
@@ -718,6 +723,7 @@ module ClaudeLimitWatch
       # Leave the stop instruction in the scrollback.
       pid = recorder_pid
       puts pid ? stop_hint(pid) : 'The recorder is not running.'
+      puts "claude-limit-watch #{VERSION}: #{HOMEPAGE}"
       $stdout.flush
     end
     %w[INT TERM HUP].each { |sig| trap(sig) { exit 0 } }
@@ -757,6 +763,8 @@ module ClaudeLimitWatch
           (default #{DEFAULT_RATE_WINDOW_MIN}); on the panel it adds a row if it isn't 10, 30, 60 or 120.
           --lines: one line per reading instead of the full-screen panel.
           --once:  print the panel once and exit (for copying); doesn't start the recorder.
+
+    claude-limit-watch #{VERSION}: #{HOMEPAGE}
   TEXT
 
   def number_arg(arg, default, min)
