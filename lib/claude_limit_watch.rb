@@ -509,21 +509,23 @@ module ClaudeLimitWatch
 
   ANSI_RE = /\e\[[0-9;?]*[A-Za-z]/.freeze
 
-  def term_width
+  # The terminal's [rows, columns] (either may be 0 if unknown), or nil.
+  def term_size
     require 'io/console'
-    w = IO.console&.winsize&.last.to_i
-    w.positive? ? w : 80
+    IO.console&.winsize
   rescue StandardError
-    80
+    nil
+  end
+
+  def term_width
+    cols = term_size&.last.to_i
+    cols.positive? ? cols : 80
   end
 
   # Terminal rows, or nil if unknown.
   def term_height
-    require 'io/console'
-    h = IO.console&.winsize&.first.to_i
-    h.positive? ? h : nil
-  rescue StandardError
-    nil
+    rows = term_size&.first.to_i
+    rows.positive? ? rows : nil
   end
 
   # Truncate to a visible width, leaving ANSI escapes intact.
@@ -607,8 +609,6 @@ module ClaudeLimitWatch
     path.start_with?("#{Dir.home}/") ? "~#{path[Dir.home.size..]}" : path
   end
 
-  # once: printing a single copy (--once), so use a fixed width, don't
-  # truncate, and leave out the quit instruction.
   # The projection bars' key: each symbol drawn as it appears in the bars.
   def legend
     "         #{paint(SO_FAR_CHAR, *ACCENT_COLOR)}#{paint(' time so far · ', 90)}#{paint(LEFT_CHAR, COLORS[:ok])}" \
@@ -616,13 +616,24 @@ module ClaudeLimitWatch
       "#{paint(' locked out (limit reached) · │ window ends', 90)}"
   end
 
+  # The legend's visible width (it's the same with or without colors).
+  def legend_width
+    @legend_width ||= legend.gsub(ANSI_RE, '').size
+  end
+
+  # once: printing a single copy (--once), so use a fixed width, don't
+  # truncate, and leave out the quit instruction.
+  # show_banner: false uses the one-line title even when the banner fits the
+  # width; the panel redraws that way when the terminal is too short for it.
   def dashboard_lines(st, now, once: false, show_banner: true)
     w = once ? 100 : term_width
     bar_w = (w - 47).clamp(10, 50) # leaves room for the projection rows' text
     p = st[:proj]
     info = st[:last_t] ? "last reading #{clock(st[:last_t])} (#{dur_m(now - st[:last_t])} ago)" : 'no readings yet'
     lines = []
-    if show_banner && w >= banner_rows.map(&:size).max + 4
+    banner_drawn = show_banner && w >= banner_rows.map(&:size).max + 4
+    legend_drawn = false
+    if banner_drawn
       lines.concat(banner.map { |row| "  #{row}" })
       lines << ''
       lines << "  #{paint("Claude's 5-hour usage limit · #{info}", 90)}"
@@ -646,6 +657,7 @@ module ClaudeLimitWatch
         lines.concat(projection_bar_lines(st[:table], p, bar_w, now))
         lines << ''
         lines << legend
+        legend_drawn = true
       elsif p[:util] < 100
         lines << ''
         lines << paint("  Projections start #{MIN_ELAPSED_MIN}m into the window " \
@@ -667,7 +679,13 @@ module ClaudeLimitWatch
       else
         "Recorder not running (history file: #{home_relative(HISTORY_FILE)})"
       end
-    rule_w = [[legend.gsub(ANSI_RE, '').size - 2, w - 4].min, 0].max # ends where the legend does
+    # The rule ends where the legend does (or at the edge of a narrower
+    # terminal). A blank line goes above it only when no legend was drawn
+    # and the last line isn't already blank. With a legend, the rule sits
+    # right under it, or under any warning after it, with no blank line:
+    # one there would push the worst case past 24 rows.
+    lines << '' unless legend_drawn || lines.last.empty?
+    rule_w = [[legend_width, w].min - 2, 0].max
     lines << paint("  #{'─' * rule_w}", 90)
     unless once
       stop = st[:recorder_pid] ? ' · stop the recorder with: claude-limit-watch stop' : ''
@@ -680,7 +698,7 @@ module ClaudeLimitWatch
     # In a terminal too short for the panel, the one-line title replaces the
     # banner (4 rows fewer) rather than letting the top scroll off.
     h = term_height
-    return dashboard_lines(st, now, show_banner: false) if show_banner && h && lines.size > h
+    return dashboard_lines(st, now, show_banner: false) if banner_drawn && h && lines.size > h
 
     lines.map { |l| fit(l, w) }
   end
