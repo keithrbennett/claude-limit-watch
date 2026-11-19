@@ -1,0 +1,182 @@
+# claude-limit-watch
+
+Watch the Claude subscription's 5-hour usage limit.
+
+## Installation
+
+    gem install claude-limit-watch
+
+It uses only the Ruby standard library (Ruby 2.6+), so it runs on macOS's
+system Ruby. Normally you just run the viewer:
+
+    claude-limit-watch [view] [rate-window-minutes] [--lines]
+
+It starts a background recorder if one isn't running, then shows the
+readings. Two processes are involved:
+
+- **The recorder** checks usage every 5 minutes and appends each reading to
+  the history file. The viewer starts it with `nohup`, in its own process
+  group, so it keeps running after you quit the viewer or close its
+  terminal. Only one recorder runs at a time.
+- **The viewer** reads only the history file and never calls the network,
+  so you can close and reopen it freely, and it has the full history as
+  soon as it starts. **rate-window-minutes** (default 30) is how far back
+  the burn rate looks in `--lines` output; on the panel it adds a row to
+  the projection bars if it isn't one of 10, 30, 60 or 120.
+
+## Stopping the recorder
+
+    claude-limit-watch stop
+
+The viewer shows this at the bottom of the screen with the recorder's pid,
+and prints it again when you quit (q or Ctrl-C), so it stays in your
+scrollback. (`kill <pid>` works too.) The viewer starts the recorder only
+when it launches: if you stop the recorder while a viewer is open, the
+viewer just reports that readings have stopped.
+
+## Running the recorder yourself
+
+    claude-limit-watch record [interval-minutes]
+
+Runs in the foreground (Ctrl-C to stop) and prints one short line per
+reading. Use this to choose a different interval (default 5; fractions OK,
+minimum 0.5): start it before the viewer, and the viewer will use it instead
+of starting its own.
+
+Polling every few seconds gets HTTP 429 from the usage endpoint, hence the
+0.5-minute minimum. Its actual rate limit isn't documented.
+
+## History file
+
+`~/.local/state/claude-limit-watch/history.jsonl` (or under
+`$XDG_STATE_HOME`; override with `CLAUDE_LIMIT_WATCH_FILE`). JSON Lines: one
+JSON object per reading, appended, so the viewer never sees a half-rewritten
+file:
+
+    {"t":"2026-11-17T23:19:47+08:00","interval_min":5.0,"util":46.0,"resets_at":"2026-11-17T18:09:59Z"}
+    {"t":"2026-11-17T23:24:47+08:00","interval_min":5.0,"error":"HTTP 429 from usage endpoint"}
+
+The recorder drops readings older than 7 days. A background recorder's
+output goes to `recorder.log` in the same directory.
+
+## Dashboard (default in a terminal)
+
+A full-screen panel on the terminal's alternate screen, so your scrollback is
+untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
+
+      ╔═════════════════════════════════════════════╗
+      ║  ◆  C L A U D E   L I M I T   W A T C H  ◆  ║
+      ╚═════════════════════════════════════════════╝
+
+      Claude's 5-hour usage limit · last reading 00:47 (<1m ago)
+
+      Used   █████████████████████████████████████████████░░░░░   89%
+      Time   ███████████████████████████████████████████░░░░░░░  4h 18m of 5h
+             21:10                                        02:10
+
+      If usage continues at the rate of the last ... (all: since 21:10):
+
+      10m    ██████████████████████████████████████████████████│ limit at 01:49 · 20m locked out
+      30m    ██████████████████████████████████████████████████│ limit at 01:47 · 23m locked out
+      1h     ██████████████████████████████████████████████████│ limit at 01:49 · 20m locked out
+      2h     ██████████████████████████████████████████████████│ limit at 02:01 · 8m locked out
+      all    ██████████████████████████████████████████████████│ limit at 01:59 · 10m locked out
+
+             █ time so far · █ time left at that rate · █ locked out (limit reached) · │ window ends
+             Time left is green if that rate lasts to the end, yellow if it runs out first
+
+      Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
+      q to quit · stop the recorder with: claude-limit-watch stop
+
+- **Heading**: a framed title in lavender; a terminal too narrow for it
+  gets a plain one-line title.
+- **Used / Time**: quota used and time elapsed in the window (the Time bar
+  in lavender), with the window's start and end times underneath.
+- **Projection bars**: what happens if usage continues at the rate of the
+  last 10 minutes, 30 minutes, 1 hour, 2 hours (plus your rate window if
+  different), or `all` (the average since the window started). Each bar is
+  on the same time scale as the Time bar and lines up under it, in three
+  colored parts: lavender, the time so far; green or yellow, the time you
+  could keep working at that rate (green if it lasts to the end of the
+  window, yellow if it runs out); and red, the time you'd be locked out after hitting the limit (at least
+  one column whenever there's any), and │ is the end of the window. The
+  text gives the hit time and how long you'd be locked out ("limit at
+  01:49 · 20m locked out"), or how much you'd have used by the end ("lasts
+  · 88% used at the end"). A row whose history doesn't reach back the
+  whole look-back is labeled with what it covers (e.g. `1h50m`); one with
+  too little history says so.
+- **No projections for the window's first 30 minutes** (`MIN_ELAPSED_MIN`);
+  a single line says when they start. Windows often start with a burst
+  (resumed sessions re-sending their whole conversation), and any rate
+  measured in those minutes would predict a limit hit that isn't coming.
+- There's no single overall projection: each look-back window gets its own
+  bar. A status line appears only when there's no projection to show: at
+  the limit (red, with the reset time), no readings yet, or no active
+  window.
+- A failed check (expired token, 429, network) shows as a yellow line. If
+  readings stop arriving (recorder not running), it says so.
+- The bottom lines show whether the recorder is running, its pid, the
+  history file it writes to, and how to stop it.
+
+It checks for changes every second but redraws only when the text changes,
+about once a minute (times are shown to the minute), so you can select and
+copy from it between changes. To copy the whole panel, print it once:
+
+    claude-limit-watch --once | xclip -selection clipboard   # pbcopy on macOS
+
+`--once` prints the panel without colors when piped, then exits; it doesn't
+start the recorder.
+
+## Lines (`--lines`, or when output isn't a terminal)
+
+Prints the readings already recorded for the current window, then one line
+per new reading:
+
+    Time  | Level  | Window       | Ends  | Used | 30m Burn Rate           |  Pace | Outlook
+    22:49 | WARN   | 2:00 of 5:00 | 01:49 |  33% | 30.0%/h (avg 16.2)      |  1.3x | LIMIT at 01:04 (in 2:15), 0:45 before reset
+    23:18 | no reading: rate-limited by the usage endpoint (HTTP 429); try a longer interval
+
+Durations here are h:mm. At the limit the outlook shows
+`AT LIMIT, resets in h:mm`.
+
+## Levels
+
+On the panel, each projection bar is green if that rate lasts to the end of
+the window and yellow if it runs out first; red is used only for the
+locked-out time.
+
+Each line in `--lines` output is green (OK), yellow (WARN) or red (URGENT):
+WARN when that rate hits the limit before the end of the window; URGENT
+when its pace is 2x or more (e.g. 20% used in the first 20 minutes is about
+3.5x), the hit is within 20 minutes, or you're at the limit. Thresholds are
+constants at the top of `lib/claude_limit_watch.rb`.
+
+Colors come from the 256-color palette (green 114, yellow 220, red 196,
+lavender 141), since terminal themes often remap the 16 basic colors (yellow
+showing as orange, for example). They're off when `NO_COLOR` is set.
+
+## How it works
+
+- Data source: `https://api.anthropic.com/api/oauth/usage` (undocumented; the
+  claude-dashboard status line uses it too), authenticated with Claude Code's
+  OAuth token (`~/.claude/.credentials.json` on Linux, the
+  `Claude Code-credentials` Keychain item on macOS; the first Keychain read
+  may ask for permission).
+- Utilization is account-wide, so it covers every concurrent Claude Code
+  session and agent-council `claude`-harness agents.
+- The endpoint returns only the current utilization and the window's reset
+  time, no history; the history is the recorder's own readings. The rate
+  over the last N minutes uses the reading closest to N minutes ago (up to
+  10%, at least a minute, older), and needs the history to cover at least
+  3/4 of N. The `all` row (and `--lines` output, until there's enough
+  history) uses the window average: utilization divided by the time since
+  the window started (the reset time minus 5 hours).
+- Utilization comes back in whole percentage points, so a short look-back
+  window is coarse: over 10 minutes, one point is 6 %/h.
+- If no Claude Code session has run for a while the token may be expired;
+  the recorder logs that until Claude Code refreshes it.
+- Works on Linux and macOS (stdlib Ruby 2.6+).
+
+## License
+
+MIT; see [LICENSE](LICENSE).
