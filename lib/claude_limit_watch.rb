@@ -517,6 +517,15 @@ module ClaudeLimitWatch
     80
   end
 
+  # Terminal rows, or nil if unknown.
+  def term_height
+    require 'io/console'
+    h = IO.console&.winsize&.first.to_i
+    h.positive? ? h : nil
+  rescue StandardError
+    nil
+  end
+
   # Truncate to a visible width, leaving ANSI escapes intact.
   def fit(str, width)
     out = +''
@@ -607,13 +616,13 @@ module ClaudeLimitWatch
       "#{paint(' locked out (limit reached) · │ window ends', 90)}"
   end
 
-  def dashboard_lines(st, now, once: false)
+  def dashboard_lines(st, now, once: false, show_banner: true)
     w = once ? 100 : term_width
     bar_w = (w - 47).clamp(10, 50) # leaves room for the projection rows' text
     p = st[:proj]
     info = st[:last_t] ? "last reading #{clock(st[:last_t])} (#{dur_m(now - st[:last_t])} ago)" : 'no readings yet'
     lines = []
-    if w >= banner_rows.map(&:size).max + 4
+    if show_banner && w >= banner_rows.map(&:size).max + 4
       lines.concat(banner.map { |row| "  #{row}" })
       lines << ''
       lines << "  #{paint("Claude's 5-hour usage limit · #{info}", 90)}"
@@ -666,7 +675,14 @@ module ClaudeLimitWatch
     end
     lines << paint("  #{VERSION_LINE}", 90)
     lines << paint("  #{recorder}", 90)
-    once ? lines : lines.map { |l| fit(l, w) }
+    return lines if once
+
+    # In a terminal too short for the panel, the one-line title replaces the
+    # banner (4 rows fewer) rather than letting the top scroll off.
+    h = term_height
+    return dashboard_lines(st, now, show_banner: false) if show_banner && h && lines.size > h
+
+    lines.map { |l| fit(l, w) }
   end
 
   # One bar per look-back window, on the same time scale as the Time bar and

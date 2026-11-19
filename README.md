@@ -90,8 +90,8 @@ untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
       claude-limit-watch 0.1.0 · https://github.com/keithrbennett/claude-limit-watch
       Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
 
-- **Heading**: a framed title in lavender; a terminal too narrow for it
-  gets a plain one-line title.
+- **Heading**: a framed title in lavender; a terminal too narrow for it,
+  or too short for the whole panel, gets a plain one-line title instead.
 - **Used / Time**: quota used and time elapsed in the window (the Time bar
   in lavender), with the window's start and end times underneath.
 - **Projection bars**: what happens if usage continues at the rate of the
