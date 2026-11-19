@@ -2,6 +2,8 @@
 
 Watch the Claude subscription's 5-hour usage limit.
 
+![The claude-limit-watch dashboard](docs/images/dashboard.png)
+
 ## Installation
 
     gem install claude-limit-watch

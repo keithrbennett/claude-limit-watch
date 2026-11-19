@@ -16,13 +16,11 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/keithrbennett/claude-limit-watch'
   spec.required_ruby_version = '>= 2.6'
 
-  spec.files = Dir['lib/**/*.rb', 'exe/*', 'README.md', 'CHANGELOG.md', 'LICENSE']
+  spec.files = Dir['lib/**/*.rb', 'exe/*', 'docs/images/*', 'README.md', 'CHANGELOG.md', 'LICENSE']
   spec.bindir        = 'exe'
   spec.executables   = ['claude-limit-watch']
   spec.require_paths = ['lib']
 
-  spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = spec.homepage
   spec.metadata['changelog_uri'] = "#{spec.homepage}/blob/main/CHANGELOG.md"
   spec.metadata['rubygems_mfa_required'] = 'true'
 end
