@@ -50,6 +50,21 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     expect(m.start).to eq(999)
   end
 
+  it 'reports a recorder that is already running' do
+    allow(m).to receive(:pid).and_return(4321)
+    expect(m.ensure_running).to eq(
+      [4321, 'Recorder running in the background (pid 4321). Stop it with: claude-limit-watch stop']
+    )
+  end
+
+  it 'reports a recorder it started' do
+    allow(m).to receive_messages(pid: nil, start: 999)
+    expect(m.ensure_running).to eq(
+      [999, 'Started the recorder (every 5m). ' \
+            'Recorder running in the background (pid 999). Stop it with: claude-limit-watch stop']
+    )
+  end
+
   it "reports a recorder that doesn't come up" do
     allow(Process).to receive_messages(spawn: 999, detach: nil)
     allow(m).to receive(:sleep)

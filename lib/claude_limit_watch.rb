@@ -32,6 +32,9 @@
 #   Panel       the full-screen panel
 #   CLI         the command line
 #   Format, Term  text formatting, and colors and the terminal's size
+#
+# A module that includes Format or Term does so before `extend self`: before
+# Ruby 3.0, extend self doesn't pick up modules included after it.
 
 require_relative 'claude_limit_watch/version'
 

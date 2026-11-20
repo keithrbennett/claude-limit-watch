@@ -3,9 +3,9 @@
 module ClaudeLimitWatch
   # The viewer's full-screen panel, redrawn in place each second.
   module Panel
-    extend self
     include Format
     include Term
+    extend self
 
     # Projection bar fills: distinct shapes, so the parts can be told apart
     # without color too (NO_COLOR, piped --once).

@@ -8,8 +8,8 @@ module ClaudeLimitWatch
   # The recorder: checks the usage at intervals and appends each reading to
   # the history file. Also finds, starts and stops a running recorder.
   module Recorder
-    extend self
     include Format
+    extend self
 
     RESTART_HINT = 'Restart the viewer to start the recorder, or run: claude-limit-watch record'
 

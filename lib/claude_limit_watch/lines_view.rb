@@ -4,9 +4,9 @@ module ClaudeLimitWatch
   # The viewer's one-line-per-reading output (--lines, or when output isn't
   # a terminal).
   module LinesView
-    extend self
     include Format
     include Term
+    extend self
 
     RATE_COL = 23 # width of the burn-rate column
 

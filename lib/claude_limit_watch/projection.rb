@@ -7,8 +7,8 @@ module ClaudeLimitWatch
   # { t:, util: }; `util` is the latest reading's utilization (percent) and
   # `now` its time; `resets` is when the window ends.
   module Projection
-    extend self
     include Format
+    extend self
 
     URGENT_MIN = 20           # urgent when the limit is this close, whatever the pace
     URGENT_PACE = 2.0         # urgent when burning this many times the sustainable rate
