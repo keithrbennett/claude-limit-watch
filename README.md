@@ -1,5 +1,7 @@
 # claude-limit-watch
 
+[![CI](https://github.com/keithrbennett/claude-limit-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/keithrbennett/claude-limit-watch/actions/workflows/ci.yml)
+
 Watch the Claude subscription's 5-hour usage limit.
 
 ![The claude-limit-watch dashboard](docs/images/dashboard.png)
@@ -190,6 +192,9 @@ muted text color. Colors are off when `NO_COLOR` is set.
 
     bundle install
     bundle exec rake        # runs the specs (RSpec)
+
+CI runs the specs on Ruby 2.6 through 4.0, on Linux and macOS
+(`.github/workflows/ci.yml`).
 
 `ruby script/demo_history.rb` writes a made-up history for screenshots;
 see the comment at its top.
