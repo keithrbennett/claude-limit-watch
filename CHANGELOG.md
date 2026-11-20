@@ -11,4 +11,5 @@ First release as a gem.
   each would hit the limit and for how long you'd be locked out.
 - `--lines` output (one line per reading) and `--once` (print the panel
   once).
+- `--no-record`: view the history file without starting a recorder.
 - `--help` and `--version`.

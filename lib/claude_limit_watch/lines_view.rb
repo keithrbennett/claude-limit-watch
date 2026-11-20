@@ -42,20 +42,30 @@ module ClaudeLimitWatch
        format('%3d%%', p[:util].round), rate_txt.ljust(RATE_COL), pace.rjust(5), outlook].join(' | ')
     end
 
-    # The warning that readings have stopped coming in.
-    def stale_line(now, last_t)
-      paint("#{now.strftime('%H:%M')} | no new readings for #{dur(now - last_t)}. #{Recorder::RESTART_HINT}", WARN)
+    # The warning that readings have stopped coming in. pid: the running
+    # recorder's, or nil; record: as for run.
+    def stale_line(now, last_t, pid, record:)
+      hint = Recorder.stale_hint(pid, record: record)
+      paint("#{now.strftime('%H:%M')} | no new readings for #{dur(now - last_t)}.#{" #{hint}" if hint}", WARN)
     end
 
-    # Prints a line per reading as they come in, until Ctrl-C.
-    def run(rate_window)
+    # The lines before the readings. pid: the running recorder's, or nil;
+    # recorder_message: what the viewer did about the recorder.
+    def intro(rate_window, pid, recorder_message)
+      keeps = pid ? ' (the recorder keeps running)' : ''
+      [paint(recorder_message, GRAY),
+       paint("Claude 5-hour limit, from #{History.file}; burn rate over the last " \
+             "#{num(rate_window)}m. Ctrl-C to quit#{keeps}.", GRAY),
+       paint(VERSION_LINE, GRAY),
+       paint(header(rate_window), GRAY)]
+    end
+
+    # Prints a line per reading as they come in, until Ctrl-C. pid and
+    # recorder_message: as for intro. record: whether this viewer started the
+    # recorder (false with --no-record).
+    def run(rate_window, pid, recorder_message, record: true)
       trap('INT') { puts; exit 0 }
-      _pid, message = Recorder.ensure_running
-      puts paint(message, GRAY)
-      puts paint("Claude 5-hour limit, from #{History.file}; burn rate over the last " \
-                 "#{num(rate_window)}m. Ctrl-C to quit (the recorder keeps running).", GRAY)
-      puts paint(VERSION_LINE, GRAY)
-      puts paint(header(rate_window), GRAY)
+      puts intro(rate_window, pid, recorder_message)
 
       cache = History::Cache.new
       shown_t = nil # time of the last reading printed
@@ -91,7 +101,7 @@ module ClaudeLimitWatch
         end
         st = Snapshot.build(records, Time.now, rate_window: rate_window)
         if st[:stale] && !stale_noted
-          puts stale_line(Time.now, st[:last_t])
+          puts stale_line(Time.now, st[:last_t], Recorder.pid, record: record)
           stale_noted = true
         end
         $stdout.flush

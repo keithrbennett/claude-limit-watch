@@ -20,7 +20,8 @@ module ClaudeLimitWatch
     # truncate, and leave out the quit instruction.
     # show_banner: false uses the one-line title even when the banner fits the
     # width; the panel redraws that way when the terminal is too short for it.
-    def lines(st, now, once: false, show_banner: true)
+    # record: whether this viewer starts the recorder (false with --no-record).
+    def lines(st, now, once: false, show_banner: true, record: true)
       w = once ? 100 : term_width
       bar_w = (w - 47).clamp(10, 50) # leaves room for the projection rows' text
       p = st[:proj]
@@ -66,9 +67,13 @@ module ClaudeLimitWatch
         out << paint("  Last check failed at #{clock(st[:error_at])}: #{st[:error]}", WARN)
       end
       if st[:stale] || (st[:no_data] && st[:recorder_pid].nil?)
-        blank.call
-        gap = st[:last_t] ? "No new readings for #{dur_m(now - st[:last_t])}. " : ''
-        out << paint("  #{gap}#{Recorder::RESTART_HINT}", WARN)
+        gap = st[:last_t] && "No new readings for #{dur_m(now - st[:last_t])}."
+        hint = Recorder.stale_hint(st[:recorder_pid], record: record)
+        warning = [gap, hint].compact.join(' ')
+        unless warning.empty?
+          blank.call
+          out << paint("  #{warning}", WARN)
+        end
       end
       recorder =
         if st[:recorder_pid]
@@ -85,7 +90,7 @@ module ClaudeLimitWatch
       rule_w = [[legend_width, w].min - 2, 0].max
       out << paint("  #{'─' * rule_w}", GRAY)
       unless once
-        stop = st[:recorder_pid] ? ' · stop the recorder with: claude-limit-watch stop' : ''
+        stop = st[:recorder_pid] ? " · stop the recorder with: #{Recorder.stop_command(st[:recorder_pid])}" : ''
         out << paint("  q to quit#{stop}", GRAY)
       end
       out << paint("  #{VERSION_LINE}", GRAY)
@@ -95,7 +100,7 @@ module ClaudeLimitWatch
       # In a terminal too short for the panel, the one-line title replaces the
       # banner (4 rows fewer) rather than letting the top scroll off.
       h = term_height
-      return lines(st, now, show_banner: false) if banner_drawn && h && out.size > h
+      return lines(st, now, show_banner: false, record: record) if banner_drawn && h && out.size > h
 
       out.map { |l| fit(l, w) }
     end
@@ -130,18 +135,17 @@ module ClaudeLimitWatch
       end
     end
 
-    # Prints the panel once, without the full-screen mode. Doesn't start the
+    # Prints the panel once, without the full-screen mode. Never starts the
     # recorder.
     def run_once(rate_window)
       now = Time.now
       st = Snapshot.build(History.read, now, rate_window: rate_window).merge(recorder_pid: Recorder.pid)
-      puts lines(st, now, once: true)
+      puts lines(st, now, once: true, record: false) # --once never starts one
     end
 
     # Shows the panel full-screen, redrawing it each second, until q or Ctrl-C.
-    # Starts the recorder if it isn't running.
-    def run(rate_window)
-      Recorder.ensure_running
+    # CLI starts the recorder first, unless record is false (--no-record).
+    def run(rate_window, record: true)
       # Read keys as they're pressed (no Enter, no echo), so q quits. Ctrl-C
       # still works. The terminal settings are restored on exit.
       keys = $stdin.tty?
@@ -167,7 +171,7 @@ module ClaudeLimitWatch
         ticks += 1
         now = Time.now
         st = Snapshot.build(cache.records, now, rate_window: rate_window).merge(recorder_pid: pid)
-        render(lines(st, now))
+        render(lines(st, now, record: record))
         if keys
           # Wait up to a second for a key.
           if IO.select([$stdin], nil, nil, 1)

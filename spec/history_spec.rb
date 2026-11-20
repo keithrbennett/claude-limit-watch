@@ -18,6 +18,7 @@ RSpec.describe ClaudeLimitWatch::History do
     def env(vars)
       allow(ENV).to receive(:[]).and_call_original
       vars.each { |name, value| allow(ENV).to receive(:[]).with(name).and_return(value) }
+      allow(ClaudeLimitWatch::History).to receive(:default_file).and_call_original
       ClaudeLimitWatch::History.file = nil
     end
 

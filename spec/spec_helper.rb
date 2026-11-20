@@ -37,6 +37,12 @@ RSpec.configure do |config|
     ClaudeLimitWatch::History.file = SPEC_HISTORY_FILE
   end
 
+  # The spec history file stands in for the default one, as for most users;
+  # specs about another history file stub default_file themselves.
+  config.before do
+    allow(ClaudeLimitWatch::History).to receive(:default_file).and_return(SPEC_HISTORY_FILE)
+  end
+
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
   end

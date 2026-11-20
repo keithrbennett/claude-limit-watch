@@ -86,6 +86,74 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
                              a_string_starting_with("\e[90m  q to quit"))
   end
 
+  describe 'when readings stop' do
+    def warning(pid: nil, record: true, now: NOW + 900, records: window_records)
+      panel(records, now, pid: pid, record: record, cols: 80).find { |l| l.include?('No new readings') }
+    end
+
+    it 'says to check a running recorder, in full at 80 columns' do
+      expect(warning(pid: 4_194_304, now: NOW + (65 * 60))) # the largest pid on Linux
+        .to eq('  No new readings for 1h 05m. Recorder (pid 4194304) stuck? Check its output')
+    end
+
+    it 'says to restart the viewer when no recorder is running' do
+      expect(warning).to eq('  No new readings for 15m. Restart the viewer, or see recorder.log')
+    end
+
+    it "only says readings stopped with --no-record, which doesn't start one" do
+      expect(warning(record: false)).to eq('  No new readings for 15m.')
+    end
+
+    it 'only says readings stopped with --once, which never starts one' do
+      allow(ClaudeLimitWatch::History).to receive(:read).and_return(window_records)
+      allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(nil)
+      allow(Time).to receive(:now).and_return(NOW + 900)
+      expect { m.run_once(30) }.to output(/^  No new readings for 15m\.$/).to_stdout
+    end
+
+    it 'says how to stop the recorder, by pid for another history file' do
+      expect(panel(window_records, NOW)).to include('  q to quit · stop the recorder with: claude-limit-watch stop')
+      allow(ClaudeLimitWatch::History).to receive(:default_file).and_return('/elsewhere/history.jsonl')
+      expect(panel(window_records, NOW)).to include('  q to quit · stop the recorder with: kill 1234')
+    end
+
+    it 'keeps --no-record when it drops the banner' do
+      lines = panel(worst_records, worst_now, pid: nil, rows: 24, rate_window: 45, record: false)
+      expect(lines.first).to match(one_line_title)
+      expect(lines).to include('  No new readings for 15m.')
+    end
+
+    it 'leaves out the warning with no data and nothing to say' do
+      expect(panel([], NOW, pid: nil, record: false).grep(/Restart|recorder\)/)).to be_empty
+    end
+  end
+
+  describe '.run' do
+    # Draws one frame (its sleep ends the loop), without touching the
+    # terminal, and returns it as plain text.
+    def first_frame(record:)
+      frame = nil
+      panel = ClaudeLimitWatch::Panel
+      allow($stdin).to receive(:tty?).and_return(false) # no key reading, no stty
+      allow(panel).to receive(:at_exit)
+      allow(panel).to receive(:trap)
+      allow(panel).to receive(:term_width).and_return(120)
+      allow(panel).to receive(:term_height).and_return(nil)
+      allow(ClaudeLimitWatch::History::Cache).to receive(:new).and_return(double(records: window_records))
+      allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(nil)
+      allow(Time).to receive(:now).and_return(NOW + 900)
+      allow(panel).to receive(:render) { |lines| frame = lines }
+      allow(panel).to receive(:sleep).and_raise(StopIteration)
+      expect { panel.run(30, record: record) }.to output("\e[?1049h\e[?25l").to_stdout # alternate screen
+      plain(frame)
+    end
+
+    it 'passes --no-record to the panel' do
+      expect(first_frame(record: true)).to include('  No new readings for 15m. Restart the viewer, or see recorder.log')
+      expect(first_frame(record: false)).to include('  No new readings for 15m.')
+    end
+  end
+
   it 'ends the rule where the legend ends' do
     [80, 97, 98, 120].each do |cols|
       lines = panel(window_records, NOW, cols: cols)

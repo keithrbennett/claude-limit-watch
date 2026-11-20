@@ -35,9 +35,9 @@ module SpecHelpers
 
   # The panel as plain text, for a terminal of the given size (rows nil:
   # unknown height).
-  def panel(records, now, cols: 120, rows: nil, pid: 1234, once: false, rate_window: 30)
+  def panel(records, now, cols: 120, rows: nil, pid: 1234, once: false, rate_window: 30, record: true)
     allow(ClaudeLimitWatch::Panel).to receive_messages(term_width: cols, term_height: rows)
     st = ClaudeLimitWatch::Snapshot.build(records, now, rate_window: rate_window).merge(recorder_pid: pid)
-    plain(ClaudeLimitWatch::Panel.lines(st, now, once: once))
+    plain(ClaudeLimitWatch::Panel.lines(st, now, once: once, record: record))
   end
 end

@@ -12,13 +12,18 @@ module ClaudeLimitWatch
               Check usage every N minutes (default #{DEFAULT_INTERVAL_MIN}; #{MIN_INTERVAL_MIN} or more) and append
               each reading to #{History.file}.
           claude-limit-watch stop
-              Stop the recorder.
-          claude-limit-watch [view] [rate-window-minutes] [--lines]
-              Start the recorder in the background if it isn't running, then show the
-              readings. rate-window-minutes: the look-back for --lines output's burn rate
-              (default #{DEFAULT_RATE_WINDOW_MIN}); on the panel it adds a row if it isn't 10, 30, 60 or 120.
-              --lines: one line per reading instead of the full-screen panel.
-              --once:  print the panel once and exit (for copying); doesn't start the recorder.
+              Stop the recorder for this history file. If the recorder was started
+              with CLAUDE_LIMIT_WATCH_FILE set, set it to the same value here.
+          claude-limit-watch [view] [rate-window-minutes]
+                             [--lines] [--once] [--no-record]
+              Show the readings, first starting the recorder in the background if it
+              isn't running (except with --no-record or --once).
+              rate-window-minutes: the look-back for --lines output's burn rate
+              (default #{DEFAULT_RATE_WINDOW_MIN}); on the panel, it adds a row if it isn't 10, 30, 60
+              or 120.
+              --lines:     one line per reading instead of the full-screen panel.
+              --once:      print the panel once and exit (for copying).
+              --no-record: don't start the recorder; just show the history file.
           claude-limit-watch --help | -h
               Show this help.
           claude-limit-watch --version | -v
@@ -53,11 +58,20 @@ module ClaudeLimitWatch
       args.shift if args.first == 'view'
       lines_mode = !args.delete('--lines').nil?
       once = !args.delete('--once').nil?
+      record = args.delete('--no-record').nil?
       rate_window = number_arg(args[0], DEFAULT_RATE_WINDOW_MIN, 1)
       usage_error if rate_window.nil? || args.size > 1
-      if once then Panel.run_once(rate_window)
-      elsif lines_mode || !$stdout.tty? then LinesView.run(rate_window)
-      else Panel.run(rate_window)
+      return Panel.run_once(rate_window) if once
+
+      # Ctrl-C while the recorder starts (up to 2 seconds) exits quietly.
+      trap('INT') { puts; exit 0 }
+      # The viewer starts the recorder, unless told not to.
+      if lines_mode || !$stdout.tty?
+        pid, message = record ? Recorder.ensure_running : Recorder.status
+        LinesView.run(rate_window, pid, message, record: record)
+      else
+        Recorder.ensure_running if record
+        Panel.run(rate_window, record: record)
       end
     end
 

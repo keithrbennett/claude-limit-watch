@@ -11,7 +11,8 @@
 # locked-out time) while 1h, 2h and all last to the end (all green).
 #
 # It holds the recorder lock, so the viewer shows it as the running recorder
-# and doesn't start a real one (which would append real readings).
+# and doesn't start a real one (which would append real readings). That's
+# also why --no-record isn't needed to view it.
 
 require 'fileutils'
 require 'json'

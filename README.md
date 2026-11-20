@@ -13,11 +13,13 @@ Watch the Claude subscription's 5-hour usage limit.
 It uses only the Ruby standard library (Ruby 2.6+), so it runs on macOS's
 system Ruby. Normally you just run the viewer:
 
-    claude-limit-watch [view] [rate-window-minutes] [--lines]
+    claude-limit-watch [view] [rate-window-minutes]
+        [--lines] [--once] [--no-record]
 
-It starts a background recorder if one isn't running, then shows the
-readings. `claude-limit-watch --help` lists all the commands and options,
-and `--version` shows the version. Two processes are involved:
+It starts a background recorder if one isn't running (unless `--no-record`
+or `--once`), then shows the readings. `claude-limit-watch --help` lists
+all the commands and options, and `--version` shows the version. Two
+processes are involved:
 
 - **The recorder** checks usage every 5 minutes and appends each reading to
   the history file. The viewer starts it with `nohup`, in its own process
@@ -35,9 +37,30 @@ and `--version` shows the version. Two processes are involved:
 
 The viewer shows this at the bottom of the screen with the recorder's pid,
 and prints it again when you quit (q or Ctrl-C), so it stays in your
-scrollback. (`kill <pid>` works too.) The viewer starts the recorder only
-when it launches: if you stop the recorder while a viewer is open, the
-viewer just reports that readings have stopped.
+scrollback. `stop` finds the recorder by the history file, so with
+`CLAUDE_LIMIT_WATCH_FILE` set, run it with the same value. `kill <pid>`
+works either way, and for a history file other than the default, that's
+what the viewer shows instead.
+
+The viewer starts the recorder only when it launches. If you stop the
+recorder while a viewer is open, the viewer reports that readings have
+stopped, and says to restart the viewer (to start a recorder again), or to
+see `recorder.log` (if one couldn't start). With `--no-record` or `--once`
+it just reports that readings stopped. If a recorder is running but
+readings have stopped anyway, it asks whether the recorder is stuck: check
+its output, which for one the viewer started is `recorder.log`, next to the
+history file.
+
+## Viewing without recording
+
+    claude-limit-watch --no-record
+
+The viewer doesn't start a recorder; it just shows the history file. Use it
+for a history file that nothing should record to: a copy from another
+machine, a demo file, or a file you point `CLAUDE_LIMIT_WATCH_FILE` at
+just to look at. A recorder that's already running keeps running, and the
+viewer still shows whether one is. If readings stop, it says so, but
+doesn't suggest starting a recorder (neither does `--once`).
 
 ## Running the recorder yourself
 
@@ -67,7 +90,7 @@ output goes to `recorder.log` in the same directory.
 ## Dashboard (default in a terminal)
 
 A full-screen panel on the terminal's alternate screen, so your scrollback is
-untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
+untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
 
       ╔═════════════════════════════════════════════╗
       ║  ◆  C L A U D E   L I M I T   W A T C H  ◆  ║
@@ -123,7 +146,7 @@ untouched. Press **q** (or Ctrl-C) to quit; the recorder keeps running.
   the limit (red, with the reset time), no readings yet, or no active
   window.
 - A failed check (expired token, 429, network) shows as a yellow line. If
-  readings stop arriving (recorder not running), it says so.
+  readings stop arriving, it says so, and what to do about it.
 - Below a rule, the bottom lines show how to quit and stop the recorder,
   the version and project page, and whether the recorder is running, with
   its pid and the history file it writes to.

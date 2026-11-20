@@ -10,6 +10,10 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     end
   end
 
+  it 'lists the view options in the help' do
+    expect { m.main(['--help']) }.to output(/--lines.*--once.*--no-record: don't start the recorder/m).to_stdout
+  end
+
   ['--version', '-v', 'stop -v'].each do |args|
     it "prints the version for: #{args}" do
       expect { m.main(args.split) }.to output("claude-limit-watch #{ClaudeLimitWatch::VERSION}\n").to_stdout
@@ -23,7 +27,65 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     expect { m.main(['--once']) }.to output(/C L A U D E.*No readings yet/m).to_stdout
   end
 
-  ['bogus', 'record 0.1', 'record 5 6', 'stop now', '30 45'].each do |args|
+  describe 'the viewer' do
+    let(:recorder) { ClaudeLimitWatch::Recorder }
+
+    before do
+      allow($stdout).to receive(:tty?).and_return(true)
+      allow(m).to receive(:trap) # not the spec process's Ctrl-C
+    end
+
+    it 'exits quietly on Ctrl-C from before it starts the recorder' do
+      expect(m).to receive(:trap).with('INT').ordered
+      expect(recorder).to receive(:ensure_running).ordered
+      allow(ClaudeLimitWatch::Panel).to receive(:run)
+      m.main([])
+    end
+
+    it 'exits with status 0 on that Ctrl-C' do
+      handler = nil
+      allow(m).to receive(:trap).with('INT') { |*, &block| handler = block }
+      allow(recorder).to receive(:ensure_running)
+      allow(ClaudeLimitWatch::Panel).to receive(:run)
+      m.main([])
+      expect do
+        expect { handler.call }.to raise_error(SystemExit) { |e| expect(e.status).to eq(0) }
+      end.to output("\n").to_stdout
+    end
+
+    it 'starts the recorder, then shows the panel' do
+      expect(recorder).to receive(:ensure_running).ordered.and_return([4321, 'started'])
+      expect(ClaudeLimitWatch::Panel).to receive(:run).ordered.with(30.0, record: true)
+      m.main([])
+    end
+
+    it "doesn't start the recorder with --no-record" do
+      expect(recorder).not_to receive(:ensure_running)
+      expect(ClaudeLimitWatch::Panel).to receive(:run).with(45.0, record: false)
+      m.main(%w[view 45 --no-record])
+    end
+
+    it 'shows lines with what the recorder is doing' do
+      allow(recorder).to receive(:ensure_running).and_return([4321, 'started'])
+      expect(ClaudeLimitWatch::LinesView).to receive(:run).with(30.0, 4321, 'started', record: true)
+      m.main(['--lines'])
+    end
+
+    it 'shows lines with whether a recorder is running, with --no-record' do
+      expect(recorder).not_to receive(:ensure_running)
+      allow(recorder).to receive(:status).and_return([nil, 'not running'])
+      expect(ClaudeLimitWatch::LinesView).to receive(:run).with(30.0, nil, 'not running', record: false)
+      m.main(%w[--no-record --lines])
+    end
+
+    it 'accepts --no-record with --once, which never starts the recorder' do
+      expect(recorder).not_to receive(:ensure_running)
+      expect(ClaudeLimitWatch::Panel).to receive(:run_once).with(30.0)
+      m.main(%w[--once --no-record])
+    end
+  end
+
+  ['bogus', 'record 0.1', 'record 5 6', 'stop now', '30 45', 'record --no-record', 'stop --no-record'].each do |args|
     it "rejects: #{args}" do
       expect do
         expect { m.main(args.split) }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }

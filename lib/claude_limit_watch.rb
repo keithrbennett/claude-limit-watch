@@ -7,10 +7,11 @@
 #   appends each reading to a history file (JSON Lines). Only one recorder
 #   runs at a time.
 # - The viewer (the default command) starts the recorder in the background
-#   (nohup) if it isn't running, then shows the readings: a full-screen panel
-#   that redraws in place (quota used vs. time elapsed in the window, and
-#   projected use at the rate of the last 10m, 30m, 1h, 2h and the whole
-#   window), or with --lines / non-terminal output, one line per reading.
+#   (nohup) if it isn't running (unless --no-record or --once), then shows the
+#   readings: a full-screen panel that redraws in place (quota used vs.
+#   time elapsed in the window, and projected use at the rate of the last
+#   10m, 30m, 1h, 2h and the whole window), or with --lines / non-terminal
+#   output, one line per reading.
 #   It reads only the history file, so it can be closed and reopened freely
 #   and has the full history from the start.
 #

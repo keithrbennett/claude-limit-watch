@@ -34,8 +34,65 @@ RSpec.describe ClaudeLimitWatch::LinesView do
       allow($stdout).to receive(:tty?).and_return(true)
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
-      expect(m.stale_line(NOW, NOW - 900))
-        .to eq("\e[38;5;220m08:00 | no new readings for 15m. #{ClaudeLimitWatch::Recorder::RESTART_HINT}\e[0m")
+      expect(m.stale_line(NOW, NOW - 900, nil, record: true))
+        .to eq("\e[38;5;220m08:00 | no new readings for 15m. Restart the viewer, or see recorder.log\e[0m")
+    end
+
+    it 'adds no hint when there is none' do
+      expect(m.stale_line(NOW, NOW - 900, nil, record: false)).to eq('08:00 | no new readings for 15m.')
+    end
+  end
+
+  describe '.intro' do
+    def intro(pid, message)
+      plain(ClaudeLimitWatch::LinesView.intro(45, pid, message))
+    end
+
+    it 'starts with the recorder message, then says the recorder keeps running' do
+      lines = intro(4321, 'Started the recorder')
+      expect(lines[0]).to eq('Started the recorder')
+      expect(lines[1]).to end_with('burn rate over the last 45m. Ctrl-C to quit (the recorder keeps running).')
+      expect(lines[2]).to eq(ClaudeLimitWatch::VERSION_LINE)
+      expect(lines[3]).to start_with('Time  | Level')
+    end
+
+    it "doesn't say the recorder keeps running when none is" do
+      expect(intro(nil, "Couldn't start the recorder")[1]).to end_with('Ctrl-C to quit.')
+    end
+  end
+
+  describe '.run' do
+    # Runs one pass of the loop: its sleep ends it.
+    def run_once(record:, pid:)
+      allow(ClaudeLimitWatch::History::Cache).to receive(:new).and_return(double(records: window_records))
+      allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(pid)
+      allow(Time).to receive(:now).and_return(NOW + 900)
+      view = ClaudeLimitWatch::LinesView
+      allow(view).to receive(:trap)
+      allow(view).to receive(:sleep).and_raise(StopIteration)
+      plain(capture_lines { view.run(30, pid, 'recorder message', record: record) })
+    end
+
+    def capture_lines
+      saved = $stdout
+      $stdout = StringIO.new
+      yield
+      $stdout.string.lines.map(&:chomp)
+    ensure
+      $stdout = saved
+    end
+
+    it 'prints the intro, the readings, then that they stopped, with what to do' do
+      lines = run_once(record: true, pid: nil)
+      expect(lines.first).to eq('recorder message')
+      expect(lines.grep(/\A\d\d:\d\d \| (OK|WARN|URGENT)/).size).to eq(window_records.size)
+      expect(lines.last).to eq('08:15 | no new readings for 15m. Restart the viewer, or see recorder.log')
+    end
+
+    it 'passes --no-record and the running recorder to the warning' do
+      expect(run_once(record: false, pid: nil).last).to eq('08:15 | no new readings for 15m.')
+      expect(run_once(record: false, pid: 4321).last)
+        .to eq('08:15 | no new readings for 15m. Recorder (pid 4321) stuck? Check its output')
     end
   end
 

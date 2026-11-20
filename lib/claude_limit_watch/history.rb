@@ -16,9 +16,12 @@ module ClaudeLimitWatch
     attr_writer :file
 
     def file
-      @file ||= ENV['CLAUDE_LIMIT_WATCH_FILE'] ||
-                File.join(ENV['XDG_STATE_HOME'] || File.join(Dir.home, '.local', 'state'),
-                          'claude-limit-watch', 'history.jsonl')
+      @file ||= ENV['CLAUDE_LIMIT_WATCH_FILE'] || default_file
+    end
+
+    # The history file when $CLAUDE_LIMIT_WATCH_FILE isn't set.
+    def default_file
+      File.join(ENV['XDG_STATE_HOME'] || File.join(Dir.home, '.local', 'state'), 'claude-limit-watch', 'history.jsonl')
     end
 
     # Held by the running recorder; holds its pid.
