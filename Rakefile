@@ -4,15 +4,12 @@ require 'bundler/gem_tasks'
 
 begin
   require 'rspec/core/rake_task'
-rescue LoadError
+rescue LoadError => e
   # No RSpec: the other tasks still work.
-end
-
-if defined?(RSpec::Core::RakeTask)
-  RSpec::Core::RakeTask.new(:spec)
-else
   desc 'Run the specs (needs RSpec: bundle install)'
-  task(:spec) { abort 'RSpec is not installed. Run: bundle install, then: bundle exec rake' }
+  task(:spec) { abort "Can't load RSpec (#{e.message}). Run: bundle install, then: bundle exec rake" }
+else
+  RSpec::Core::RakeTask.new(:spec)
 end
 
 task default: :spec

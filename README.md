@@ -160,7 +160,9 @@ constants at the top of `lib/claude_limit_watch/projection.rb`.
 
 Colors come from the 256-color palette (green 114, yellow 220, red 196,
 dark red 52, lavender 141), since terminal themes often remap the 16 basic
-colors (yellow showing as orange, for example). They're off when `NO_COLOR` is set.
+colors (yellow showing as orange, for example). The exception is the gray
+of secondary text: the basic bright black, which themes remap to their own
+muted text color. Colors are off when `NO_COLOR` is set.
 
 ## How it works
 

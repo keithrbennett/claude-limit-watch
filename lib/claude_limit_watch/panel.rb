@@ -32,9 +32,9 @@ module ClaudeLimitWatch
       if banner_drawn
         out.concat(banner.map { |row| "  #{row}" })
         out << ''
-        out << "  #{paint("Claude's 5-hour usage limit · #{info}", DIM)}"
+        out << "  #{paint("Claude's 5-hour usage limit · #{info}", GRAY)}"
       else
-        out << "#{paint(' Claude 5-hour limit', 1)}   #{paint(info, DIM)}"
+        out << "#{paint(' Claude 5-hour limit', 1)}   #{paint(info, GRAY)}"
       end
       out << ''
       status = headline(st, now)
@@ -45,10 +45,10 @@ module ClaudeLimitWatch
         used_color = p[:util] >= 100 ? [COLORS[:urgent]] : [] # normal text color unless at the limit
         out << "  Used   #{bar(p[:util] / 100.0, bar_w, *used_color)}  #{format('%3d%%', p[:util].round)}"
         out << "  Time   #{bar(elapsed / WINDOW_MIN, bar_w, *ACCENT_COLOR)}  #{dur_m(elapsed * 60)} of 5h"
-        out << paint("         #{clock(window_start).ljust(bar_w - 5)}#{clock(p[:resets])}", DIM)
+        out << paint("         #{clock(window_start).ljust(bar_w - 5)}#{clock(p[:resets])}", GRAY)
         if st[:table] && p[:util] < 100
           out << ''
-          out << paint("  If usage continues at the rate of the last ... (all: since #{clock(window_start)}):", DIM)
+          out << paint("  If usage continues at the rate of the last ... (all: since #{clock(window_start)}):", GRAY)
           out << ''
           out.concat(projection_bar_lines(st[:table], p, bar_w, now))
           out << ''
@@ -58,7 +58,7 @@ module ClaudeLimitWatch
           out << ''
           start_at = clock(window_start + (Projection::MIN_ELAPSED_MIN * 60))
           out << paint("  Projections start #{Projection::MIN_ELAPSED_MIN}m into the window " \
-                       "(at #{start_at}): the first minutes are too little to go on.", DIM)
+                       "(at #{start_at}): the first minutes are too little to go on.", GRAY)
         end
       end
       if st[:error]
@@ -83,13 +83,13 @@ module ClaudeLimitWatch
       # one there would push the worst case past 24 rows.
       blank.call unless legend_drawn
       rule_w = [[legend_width, w].min - 2, 0].max
-      out << paint("  #{'─' * rule_w}", DIM)
+      out << paint("  #{'─' * rule_w}", GRAY)
       unless once
         stop = st[:recorder_pid] ? ' · stop the recorder with: claude-limit-watch stop' : ''
-        out << paint("  q to quit#{stop}", DIM)
+        out << paint("  q to quit#{stop}", GRAY)
       end
-      out << paint("  #{VERSION_LINE}", DIM)
-      out << paint("  #{recorder}", DIM)
+      out << paint("  #{VERSION_LINE}", GRAY)
+      out << paint("  #{recorder}", GRAY)
       return out if once
 
       # In a terminal too short for the panel, the one-line title replaces the
@@ -111,7 +111,7 @@ module ClaudeLimitWatch
       so_far = cells.call(now)
       rows.map do |r|
         label = (r[:label] == 'window' ? 'all' : r[:label]).ljust(6)
-        next "  #{label} #{paint("not enough history yet (have #{dur_m(r[:have] * 60)})", DIM)}" if r[:na]
+        next "  #{label} #{paint("not enough history yet (have #{dur_m(r[:have] * 60)})", GRAY)}" if r[:na]
 
         # Time left is always green; a rate that runs out is followed by red,
         # the locked-out time, and its text is red too.
@@ -126,7 +126,7 @@ module ClaudeLimitWatch
           bar = paint(SO_FAR_CHAR * so_far, *ACCENT_COLOR) + paint(LEFT_CHAR * (bar_w - so_far), COLORS[:ok])
           text = "lasts · #{r[:end_pct].round}% used at the end"
         end
-        "  #{label} #{bar}#{paint('│', DIM)} #{paint(text, COLORS[runs_out ? :urgent : :ok])}"
+        "  #{label} #{bar}#{paint('│', GRAY)} #{paint(text, COLORS[runs_out ? :urgent : :ok])}"
       end
     end
 
@@ -184,7 +184,7 @@ module ClaudeLimitWatch
 
     def bar(fraction, width, *codes)
       filled = (fraction.clamp(0.0, 1.0) * width).round
-      paint('█' * filled, *codes) + paint('░' * (width - filled), DIM)
+      paint('█' * filled, *codes) + paint('░' * (width - filled), GRAY)
     end
 
     # A status line for the states that aren't projections (no data, no active
@@ -192,9 +192,9 @@ module ClaudeLimitWatch
     # in the bars instead, so there's no single headline projection.
     def headline(st, now)
       p = st[:proj]
-      return [paint(' NO DATA ', 1, 7, DIM), "No readings yet in #{History.file}"] if st[:no_data]
-      return [paint(' IDLE ', 1, 7, DIM), "No active 5-hour window (#{st[:no_window].round}% used)"] if st[:no_window]
-      return [paint(' ? ', 1, 7, DIM), 'No successful reading yet'] unless p
+      return [paint(' NO DATA ', 1, 7, GRAY), "No readings yet in #{History.file}"] if st[:no_data]
+      return [paint(' IDLE ', 1, 7, GRAY), "No active 5-hour window (#{st[:no_window].round}% used)"] if st[:no_window]
+      return [paint(' ? ', 1, 7, GRAY), 'No successful reading yet'] unless p
       return nil if p[:util] < 100
 
       [paint(' AT LIMIT ', 1, 7, COLORS[:urgent]),
@@ -213,9 +213,9 @@ module ClaudeLimitWatch
 
     # The projection bars' key: each symbol drawn as it appears in the bars.
     def legend
-      "         #{paint(SO_FAR_CHAR, *ACCENT_COLOR)}#{paint(' time so far · ', DIM)}#{paint(LEFT_CHAR, COLORS[:ok])}" \
-        "#{paint(' time left at that rate · ', DIM)}#{paint(LOCKED_CHAR, *LOCKED_COLOR)}" \
-        "#{paint(' locked out (limit reached) · │ window ends', DIM)}"
+      "         #{paint(SO_FAR_CHAR, *ACCENT_COLOR)}#{paint(' time so far · ', GRAY)}#{paint(LEFT_CHAR, COLORS[:ok])}" \
+        "#{paint(' time left at that rate · ', GRAY)}#{paint(LOCKED_CHAR, *LOCKED_COLOR)}" \
+        "#{paint(' locked out (limit reached) · │ window ends', GRAY)}"
     end
 
     # The legend's visible width (it's the same with or without colors).

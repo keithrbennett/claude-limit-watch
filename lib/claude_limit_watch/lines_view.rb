@@ -51,11 +51,11 @@ module ClaudeLimitWatch
     def run(rate_window)
       trap('INT') { puts; exit 0 }
       _pid, message = Recorder.ensure_running
-      puts paint(message, DIM)
+      puts paint(message, GRAY)
       puts paint("Claude 5-hour limit, from #{History.file}; burn rate over the last " \
-                 "#{num(rate_window)}m. Ctrl-C to quit (the recorder keeps running).", DIM)
-      puts paint(VERSION_LINE, DIM)
-      puts paint(header(rate_window), DIM)
+                 "#{num(rate_window)}m. Ctrl-C to quit (the recorder keeps running).", GRAY)
+      puts paint(VERSION_LINE, GRAY)
+      puts paint(header(rate_window), GRAY)
 
       cache = History::Cache.new
       shown_t = nil # time of the last reading printed
@@ -75,12 +75,12 @@ module ClaudeLimitWatch
 
           stamp = rec[:t].strftime('%H:%M')
           if rec[:error]
-            puts paint("#{stamp} | no reading: #{rec[:error]}", DIM)
+            puts paint("#{stamp} | no reading: #{rec[:error]}", GRAY)
           elsif rec[:resets].nil? || rec[:resets] <= rec[:t]
-            puts paint("#{stamp} | no active 5-hour window (#{rec[:util].round}% used)", DIM)
+            puts paint("#{stamp} | no active 5-hour window (#{rec[:util].round}% used)", GRAY)
           else
             unless window && (rec[:resets] - window).abs < 60
-              puts paint("-- 5-hour window ends at #{clock(rec[:resets])} --", DIM) if window
+              puts paint("-- 5-hour window ends at #{clock(rec[:resets])} --", GRAY) if window
               window = rec[:resets]
             end
             st = Snapshot.build(records[0..i], rec[:t], rate_window: rate_window)

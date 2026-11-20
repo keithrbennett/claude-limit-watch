@@ -24,10 +24,17 @@ RSpec.configure do |config|
   config.order = :random
   Kernel.srand config.seed
 
-  # Specs delete the history file; make sure it's never the real one.
-  config.before do
-    raise "not the spec history file: #{ClaudeLimitWatch::History.file}" \
-      unless ClaudeLimitWatch::History.file == SPEC_HISTORY_FILE
+  # Specs delete the history file; make sure it's never the real one. An
+  # example that changes it fails, and the file is put back for the next one.
+  config.around do |example|
+    file = ClaudeLimitWatch::History.file
+    raise "not the spec history file before the example: #{file}" unless file == SPEC_HISTORY_FILE
+
+    example.run
+    file = ClaudeLimitWatch::History.file
+    raise "the example changed the history file to: #{file}" unless file == SPEC_HISTORY_FILE
+  ensure
+    ClaudeLimitWatch::History.file = SPEC_HISTORY_FILE
   end
 
   config.mock_with :rspec do |mocks|

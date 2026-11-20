@@ -74,6 +74,18 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
   end
 
+  it 'shows warnings in yellow, and secondary text in gray' do
+    allow($stdout).to receive(:tty?).and_return(true)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+    allow(m).to receive_messages(term_width: 120, term_height: nil)
+    st = ClaudeLimitWatch::Snapshot.build(worst_records, worst_now, rate_window: 30).merge(recorder_pid: 1234)
+    lines = m.lines(st, worst_now)
+    expect(lines).to include(a_string_starting_with("\e[38;5;220m  Last check failed"),
+                             a_string_starting_with("\e[38;5;220m  No new readings"),
+                             a_string_starting_with("\e[90m  q to quit"))
+  end
+
   it 'ends the rule where the legend ends' do
     [80, 97, 98, 120].each do |cols|
       lines = panel(window_records, NOW, cols: cols)

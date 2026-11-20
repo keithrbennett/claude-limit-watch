@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# Finding and stopping the recorder (without starting one).
+# Finding, starting and stopping the recorder. Process.spawn and Process.kill
+# are stubbed: no real recorder is started or signalled.
 RSpec.describe ClaudeLimitWatch::Recorder do
   m = described_class
 
@@ -40,11 +41,20 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     history = ClaudeLimitWatch::History
     expect(Process).to receive(:spawn)
       .with({ 'CLAUDE_LIMIT_WATCH_FILE' => history.file }, 'nohup', RbConfig.ruby,
-            ClaudeLimitWatch::EXECUTABLE, 'record', hash_including(pgroup: true, out: [history.log_file, 'a']))
+            ClaudeLimitWatch::EXECUTABLE, 'record',
+            in: File::NULL, out: [history.log_file, 'a'], err: [:child, :out], pgroup: true)
       .and_return(999)
-    allow(Process).to receive(:detach)
+    expect(Process).to receive(:detach).with(999)
     allow(m).to receive(:sleep)
     allow(m).to receive(:pid).and_return(nil, 999)
     expect(m.start).to eq(999)
+  end
+
+  it "reports a recorder that doesn't come up" do
+    allow(Process).to receive_messages(spawn: 999, detach: nil)
+    allow(m).to receive(:sleep)
+    allow(m).to receive(:pid).and_return(nil)
+    expect(m.ensure_running)
+      .to eq([nil, "Couldn't start the recorder; see #{ClaudeLimitWatch::History.log_file}"])
   end
 end
