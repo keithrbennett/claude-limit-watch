@@ -184,6 +184,14 @@ colors (yellow showing as orange, for example). They're off when `NO_COLOR` is s
   the recorder logs that until Claude Code refreshes it.
 - Works on Linux and macOS (stdlib Ruby 2.6+).
 
+## Development
+
+    bundle install
+    bundle exec rake        # runs the specs (RSpec)
+
+`ruby script/demo_history.rb` writes a made-up history for screenshots;
+see the comment at its top.
+
 ## License
 
 MIT; see [LICENSE](LICENSE).
