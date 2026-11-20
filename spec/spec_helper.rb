@@ -3,17 +3,19 @@
 require 'tmpdir'
 require 'fileutils'
 
-# Set before loading the library, which reads these when it loads: never touch
-# the real history file, and keep times and output predictable.
-SPEC_TMP_DIR = Dir.mktmpdir('claude-limit-watch-spec')
-ENV['CLAUDE_LIMIT_WATCH_FILE'] = File.join(SPEC_TMP_DIR, 'history.jsonl')
+# Predictable times and output.
 ENV['TZ'] = 'UTC'
 ENV['NO_COLOR'] = '1'
-at_exit { FileUtils.remove_entry(SPEC_TMP_DIR) }
 
 require 'rspec'
 require 'claude_limit_watch'
 require_relative 'support/helpers'
+
+# Never touch the real history file.
+SPEC_TMP_DIR = Dir.mktmpdir('claude-limit-watch-spec')
+at_exit { FileUtils.remove_entry(SPEC_TMP_DIR) }
+SPEC_HISTORY_FILE = File.join(SPEC_TMP_DIR, 'history.jsonl')
+ClaudeLimitWatch::History.file = SPEC_HISTORY_FILE
 
 RSpec.configure do |config|
   config.include SpecHelpers

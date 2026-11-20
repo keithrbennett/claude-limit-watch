@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # The full-screen panel's layout.
-RSpec.describe ClaudeLimitWatch, '.dashboard_lines' do
+RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
   m = described_class
   banner_text = 'C L A U D E'
   one_line_title = /\A Claude 5-hour limit/
@@ -11,22 +11,45 @@ RSpec.describe ClaudeLimitWatch, '.dashboard_lines' do
   let(:worst_records) { window_records + [error_record(NOW + 60)] }
   let(:worst_now) { NOW + 60 + 900 }
 
+  # Each state the panel can be in: [records, now, recorder pid].
+  let(:states) do
+    idle = { t: NOW, interval: 5.0, util: 3.0, resets: NOW - 60 }
+    {
+      'normal' => [window_records, NOW, 1234],
+      'no data' => [[], NOW, 1234],
+      'no data, no recorder' => [[], NOW, nil],
+      'only failed checks' => [[error_record(NOW)], NOW, 1234],
+      'idle' => [[idle], NOW, 1234],
+      'idle, then a failed check' => [[idle, error_record(NOW + 60)], NOW + 61, 1234],
+      'early in the window' => [window_records(elapsed: 20, knots: [[0, 0], [20, 5]]), NOW, 1234],
+      'at the limit' => [window_records(knots: [[0, 0], [200, 100]]), NOW, 1234],
+      'stale' => [window_records, NOW + 900, 1234],
+      'failed and stale' => [worst_records, worst_now, 1234],
+      'failed and stale, no recorder' => [worst_records, worst_now, nil]
+    }
+  end
+
   it 'shows the normal panel in 23 rows' do
     lines = panel(window_records, NOW)
     expect(lines.size).to eq(23)
     expect(lines[1]).to include(banner_text)
     expect(lines).to include('  q to quit · stop the recorder with: claude-limit-watch stop')
-    expect(lines[-2]).to eq("  #{m::VERSION_LINE}")
+    expect(lines[-2]).to eq("  #{ClaudeLimitWatch::VERSION_LINE}")
     expect(lines[-1]).to start_with('  Recorder running (pid 1234)')
   end
 
-  it 'fits 24 rows in every state' do
-    with_rate_window(45) do
-      expect(panel(worst_records, worst_now).size).to eq(28) # unknown height: the banner stays
+  it 'drops the banner to fit the tallest panel in 24 rows' do
+    expect(panel(worst_records, worst_now, rate_window: 45).size).to eq(28) # unknown height: the banner stays
 
-      lines = panel(worst_records, worst_now, rows: 24)
-      expect(lines.size).to eq(24)
-      expect(lines.first).to match(one_line_title)
+    lines = panel(worst_records, worst_now, rows: 24, rate_window: 45)
+    expect(lines.size).to eq(24)
+    expect(lines.first).to match(one_line_title)
+  end
+
+  it 'fits 24 rows in every state' do
+    states.each do |state, (records, now, pid)|
+      size = panel(records, now, rows: 24, pid: pid, rate_window: 45).size
+      expect(size).to be <= 24, "#{size} rows in the #{state} panel"
     end
   end
 
@@ -39,18 +62,14 @@ RSpec.describe ClaudeLimitWatch, '.dashboard_lines' do
   end
 
   it 'keeps the banner and leaves out quitting with --once' do
-    lines = panel(worst_records, worst_now, rows: 10, once: true)
+    lines = panel(worst_records, worst_now, rows: 10, once: true) # --once ignores the terminal's height
     expect(lines[1]).to include(banner_text)
     expect(lines.grep(/q to quit/)).to be_empty
   end
 
   it 'never doubles a blank line' do
-    early = window_records(elapsed: 20, knots: [[0, 0], [20, 5]])
-    idle = [{ t: NOW, interval: 5.0, util: 3.0, resets: NOW - 60 }]
-    states = { 'normal' => [window_records, NOW], 'no data' => [[], NOW], 'idle' => [idle, NOW],
-               'early in the window' => [early, NOW], 'failed and stale' => [worst_records, worst_now] }
-    states.each do |state, (records, now)|
-      doubled = panel(records, now).each_cons(2).any? { |a, b| a.strip.empty? && b.strip.empty? }
+    states.each do |state, (records, now, pid)|
+      doubled = panel(records, now, pid: pid).each_cons(2).any? { |a, b| a.strip.empty? && b.strip.empty? }
       expect(doubled).to be(false), "doubled blank line in the #{state} panel"
     end
   end

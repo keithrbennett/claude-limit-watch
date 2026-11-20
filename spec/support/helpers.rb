@@ -4,8 +4,6 @@
 NOW = Time.at(1_800_000_000)
 
 module SpecHelpers
-  M = ClaudeLimitWatch
-
   # The demo scenario: 60% used 3h20m in, after an early burst and a recent
   # surge, so the 10m and 30m rates run out and the others last.
   DEMO_KNOTS = [[0, 0], [5, 8], [30, 14], [80, 30], [140, 42], [170, 47], [190, 54], [200, 60]].freeze
@@ -26,27 +24,20 @@ module SpecHelpers
     { t: time, interval: 5.0, error: message }
   end
 
-  # The history in the form project() and rate_over() take: earlier readings.
+  # The history in the form Projection's functions take: earlier readings.
   def prior(records)
     records[0...-1].map { |r| { t: r[:t], util: r[:util] } }
   end
 
-  def with_rate_window(minutes)
-    saved = M.instance_variable_get(:@rate_window_min)
-    M.instance_variable_set(:@rate_window_min, minutes)
-    yield
-  ensure
-    M.instance_variable_set(:@rate_window_min, saved)
-  end
-
   def plain(lines)
-    lines.map { |l| l.gsub(M::ANSI_RE, '') }
+    lines.map { |l| l.gsub(ClaudeLimitWatch::Term::ANSI_RE, '') }
   end
 
   # The panel as plain text, for a terminal of the given size (rows nil:
   # unknown height).
-  def panel(records, now, cols: 120, rows: nil, pid: 1234, once: false)
-    allow(M).to receive_messages(term_width: cols, term_height: rows)
-    plain(M.dashboard_lines(M.snapshot(records, now).merge(recorder_pid: pid), now, once: once))
+  def panel(records, now, cols: 120, rows: nil, pid: 1234, once: false, rate_window: 30)
+    allow(ClaudeLimitWatch::Panel).to receive_messages(term_width: cols, term_height: rows)
+    st = ClaudeLimitWatch::Snapshot.build(records, now, rate_window: rate_window).merge(recorder_pid: pid)
+    plain(ClaudeLimitWatch::Panel.lines(st, now, once: once))
   end
 end

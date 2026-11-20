@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Rates, assessments and projections: the numbers behind both views.
-RSpec.describe ClaudeLimitWatch do
+RSpec.describe ClaudeLimitWatch::Projection do
   m = described_class
 
   # Readings `minutes_ago` back, rising `per_min` points a minute to `util_now`.
@@ -98,7 +98,7 @@ RSpec.describe ClaudeLimitWatch do
     let(:resets) { NOW + (100 * 60) }
 
     it 'uses the recent rate when there is history' do
-      p = with_rate_window(30) { m.project(rising((5..60).step(5).to_a), NOW, 50.0, resets) }
+      p = m.project(rising((5..60).step(5).to_a), NOW, 50.0, resets, rate_window: 30)
       expect(p[:recent_rate]).to be_within(1e-9).of(0.2)
       expect(p[:avg_rate]).to be_within(1e-9).of(0.25) # 50% in 200 minutes
       expect(p[:rate]).to be_within(1e-9).of(0.2)
@@ -107,24 +107,23 @@ RSpec.describe ClaudeLimitWatch do
     end
 
     it 'falls back to the window average' do
-      p = with_rate_window(30) { m.project([], NOW, 50.0, resets) }
+      p = m.project([], NOW, 50.0, resets, rate_window: 30)
       expect(p[:recent_rate]).to be_nil
       expect(p[:rate]).to be_within(1e-9).of(0.25)
     end
 
     it 'uses the rate window' do
       history = rising([30, 25, 20, 15, 10, 5])
-      expect(with_rate_window(30) { m.project(history, NOW, 50.0, resets) }[:recent_rate]).not_to be_nil
-      expect(with_rate_window(60) { m.project(history, NOW, 50.0, resets) }[:recent_rate]).to be_nil
+      expect(m.project(history, NOW, 50.0, resets, rate_window: 30)[:recent_rate]).not_to be_nil
+      expect(m.project(history, NOW, 50.0, resets, rate_window: 60)[:recent_rate]).to be_nil
     end
   end
 
   describe '.projection_rows' do
     def rows_for(records, rate_window: 30)
       last = records.last
-      with_rate_window(rate_window) do
-        ClaudeLimitWatch.projection_rows(prior(records), last[:t], last[:util], last[:resets])
-      end
+      ClaudeLimitWatch::Projection.projection_rows(prior(records), last[:t], last[:util], last[:resets],
+                                                   rate_window: rate_window)
     end
 
     it 'waits out the first minutes of the window' do

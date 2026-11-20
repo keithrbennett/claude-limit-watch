@@ -156,7 +156,7 @@ Each line in `--lines` output is green (OK), yellow (WARN) or red (URGENT):
 WARN when that rate hits the limit before the end of the window; URGENT
 when its pace is 2x or more (e.g. 20% used in the first 20 minutes is about
 3.5x), the hit is within 20 minutes, or you're at the limit. Thresholds are
-constants at the top of `lib/claude_limit_watch.rb`.
+constants at the top of `lib/claude_limit_watch/projection.rb`.
 
 Colors come from the 256-color palette (green 114, yellow 220, red 196,
 dark red 52, lavender 141), since terminal themes often remap the 16 basic
