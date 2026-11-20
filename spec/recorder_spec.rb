@@ -28,4 +28,23 @@ RSpec.describe ClaudeLimitWatch::Recorder do
   it 'says so when asked to stop with no recorder running' do
     expect { m.stop }.to output("No recorder is running.\n").to_stdout
   end
+
+  it 'stops the running recorder' do
+    allow(m).to receive(:pid).and_return(4321, 4321, nil)
+    allow(m).to receive(:sleep)
+    expect(Process).to receive(:kill).with('TERM', 4321)
+    expect { m.stop }.to output("Stopped the recorder (pid 4321).\n").to_stdout
+  end
+
+  it 'starts the recorder in the background, on this history file' do
+    history = ClaudeLimitWatch::History
+    expect(Process).to receive(:spawn)
+      .with({ 'CLAUDE_LIMIT_WATCH_FILE' => history.file }, 'nohup', RbConfig.ruby,
+            ClaudeLimitWatch::EXECUTABLE, 'record', hash_including(pgroup: true, out: [history.log_file, 'a']))
+      .and_return(999)
+    allow(Process).to receive(:detach)
+    allow(m).to receive(:sleep)
+    allow(m).to receive(:pid).and_return(nil, 999)
+    expect(m.start).to eq(999)
+  end
 end

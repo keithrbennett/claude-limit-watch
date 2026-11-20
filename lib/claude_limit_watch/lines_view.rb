@@ -42,15 +42,20 @@ module ClaudeLimitWatch
        format('%3d%%', p[:util].round), rate_txt.ljust(RATE_COL), pace.rjust(5), outlook].join(' | ')
     end
 
+    # The warning that readings have stopped coming in.
+    def stale_line(now, last_t)
+      paint("#{now.strftime('%H:%M')} | no new readings for #{dur(now - last_t)}. #{Recorder::RESTART_HINT}", WARN)
+    end
+
     # Prints a line per reading as they come in, until Ctrl-C.
     def run(rate_window)
       trap('INT') { puts; exit 0 }
       _pid, message = Recorder.ensure_running
-      puts paint(message, 90)
+      puts paint(message, DIM)
       puts paint("Claude 5-hour limit, from #{History.file}; burn rate over the last " \
-                 "#{num(rate_window)}m. Ctrl-C to quit (the recorder keeps running).", 90)
-      puts paint(VERSION_LINE, 90)
-      puts paint(header(rate_window), 90)
+                 "#{num(rate_window)}m. Ctrl-C to quit (the recorder keeps running).", DIM)
+      puts paint(VERSION_LINE, DIM)
+      puts paint(header(rate_window), DIM)
 
       cache = History::Cache.new
       shown_t = nil # time of the last reading printed
@@ -70,12 +75,12 @@ module ClaudeLimitWatch
 
           stamp = rec[:t].strftime('%H:%M')
           if rec[:error]
-            puts paint("#{stamp} | no reading: #{rec[:error]}", 90)
+            puts paint("#{stamp} | no reading: #{rec[:error]}", DIM)
           elsif rec[:resets].nil? || rec[:resets] <= rec[:t]
-            puts paint("#{stamp} | no active 5-hour window (#{rec[:util].round}% used)", 90)
+            puts paint("#{stamp} | no active 5-hour window (#{rec[:util].round}% used)", DIM)
           else
             unless window && (rec[:resets] - window).abs < 60
-              puts paint("-- 5-hour window ends at #{clock(rec[:resets])} --", 90) if window
+              puts paint("-- 5-hour window ends at #{clock(rec[:resets])} --", DIM) if window
               window = rec[:resets]
             end
             st = Snapshot.build(records[0..i], rec[:t], rate_window: rate_window)
@@ -86,8 +91,7 @@ module ClaudeLimitWatch
         end
         st = Snapshot.build(records, Time.now, rate_window: rate_window)
         if st[:stale] && !stale_noted
-          puts paint("#{Time.now.strftime('%H:%M')} | no new readings for #{dur(Time.now - st[:last_t])}. " \
-                     "#{Recorder::RESTART_HINT}", 33)
+          puts stale_line(Time.now, st[:last_t])
           stale_noted = true
         end
         $stdout.flush

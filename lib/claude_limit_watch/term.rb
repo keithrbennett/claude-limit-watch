@@ -8,6 +8,8 @@ module ClaudeLimitWatch
     # 256-color codes: terminal themes often remap the 16 basic colors (yellow
     # showing as orange, say), but generally leave these alone.
     COLORS = { ok: '38;5;114', projected: '38;5;220', urgent: '38;5;196' }.freeze # green, yellow, red
+    WARN = COLORS[:projected] # warnings: yellow
+    DIM = 90                  # secondary text: gray
     ANSI_RE = /\e\[[0-9;?]*[A-Za-z]/.freeze
 
     # Text in the given SGR codes, or plain when colors are off or output

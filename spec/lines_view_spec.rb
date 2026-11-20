@@ -29,6 +29,16 @@ RSpec.describe ClaudeLimitWatch::LinesView do
     end
   end
 
+  describe '.stale_line' do
+    it 'warns in yellow when colors are on' do
+      allow($stdout).to receive(:tty?).and_return(true)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+      expect(m.stale_line(NOW, NOW - 900))
+        .to eq("\e[38;5;220m08:00 | no new readings for 15m. #{ClaudeLimitWatch::Recorder::RESTART_HINT}\e[0m")
+    end
+  end
+
   describe '.header' do
     it 'names the rate window' do
       expect(m.header(45)).to include('45m Burn Rate')

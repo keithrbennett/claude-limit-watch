@@ -6,11 +6,7 @@ require 'json'
 RSpec.describe ClaudeLimitWatch::History do
   m = described_class
 
-  before do
-    raise "not the spec history file: #{m.file}" unless m.file == SPEC_HISTORY_FILE
-
-    FileUtils.rm_f(m.file)
-  end
+  before { FileUtils.rm_f(m.file) } # spec_helper makes sure it's the spec file
 
   describe '.file' do
     around do |example|

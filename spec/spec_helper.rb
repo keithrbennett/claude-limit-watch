@@ -24,6 +24,12 @@ RSpec.configure do |config|
   config.order = :random
   Kernel.srand config.seed
 
+  # Specs delete the history file; make sure it's never the real one.
+  config.before do
+    raise "not the spec history file: #{ClaudeLimitWatch::History.file}" \
+      unless ClaudeLimitWatch::History.file == SPEC_HISTORY_FILE
+  end
+
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
   end
