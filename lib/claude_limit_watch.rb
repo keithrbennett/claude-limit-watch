@@ -1,26 +1,24 @@
 # frozen_string_literal: true
 
-
 # claude-limit-watch: watch the Claude subscription's 5-hour usage limit.
 #
 # Two processes:
-#   claude-limit-watch record [interval-minutes]
-#     Checks usage every N minutes (default 5) and appends each reading to a
-#     history file (JSON Lines). Only one recorder runs at a time.
-#   claude-limit-watch stop
-#     Stops the recorder.
-#   claude-limit-watch [view] [rate-window-minutes] [--lines]
-#     Starts the recorder in the background (nohup) if it isn't running, then
-#     shows the readings: a full-screen panel that redraws in place (quota
-#     used vs. time elapsed in the window, and projected use at the end of
-#     the window at the rate of the last 10m, 30m, 1h, 2h and the whole
-#     window), or with --lines / non-terminal output, one line per reading.
-#     Reads only the history file, so it can be closed and reopened freely
-#     and has the full history from the start.
+# - The recorder (`record`) checks usage every N minutes (default 5) and
+#   appends each reading to a history file (JSON Lines). Only one recorder
+#   runs at a time.
+# - The viewer (the default command) starts the recorder in the background
+#   (nohup) if it isn't running, then shows the readings: a full-screen panel
+#   that redraws in place (quota used vs. time elapsed in the window, and
+#   projected use at the rate of the last 10m, 30m, 1h, 2h and the whole
+#   window), or with --lines / non-terminal output, one line per reading.
+#   It reads only the history file, so it can be closed and reopened freely
+#   and has the full history from the start.
+#
+# USAGE below (or `claude-limit-watch --help`) lists the commands and options.
 #
 # The utilization is account-wide (the same undocumented endpoint the
 # claude-dashboard status line uses), so it covers every concurrent Claude
-# Code session and agent-council `claude`-harness agents.
+# Code session and any other tools using your Claude login.
 #
 # Stdlib only; works on Ruby 2.6+ (macOS system Ruby).
 #

@@ -13,9 +13,9 @@ system Ruby. Normally you just run the viewer:
 
     claude-limit-watch [view] [rate-window-minutes] [--lines]
 
-(`claude-limit-watch --help` lists all the commands and options, and
-`--version` shows the version.) It starts a background recorder if one
-isn't running, then shows the readings. Two processes are involved:
+It starts a background recorder if one isn't running, then shows the
+readings. `claude-limit-watch --help` lists all the commands and options,
+and `--version` shows the version. Two processes are involved:
 
 - **The recorder** checks usage every 5 minutes and appends each reading to
   the history file. The viewer starts it with `nohup`, in its own process
@@ -170,7 +170,7 @@ colors (yellow showing as orange, for example). They're off when `NO_COLOR` is s
   `Claude Code-credentials` Keychain item on macOS; the first Keychain read
   may ask for permission).
 - Utilization is account-wide, so it covers every concurrent Claude Code
-  session and agent-council `claude`-harness agents.
+  session and any other tools using your Claude login.
 - The endpoint returns only the current utilization and the window's reset
   time, no history; the history is the recorder's own readings. The rate
   over the last N minutes uses the reading closest to N minutes ago (up to
