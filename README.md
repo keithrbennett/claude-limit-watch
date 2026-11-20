@@ -13,8 +13,9 @@ system Ruby. Normally you just run the viewer:
 
     claude-limit-watch [view] [rate-window-minutes] [--lines]
 
-It starts a background recorder if one isn't running, then shows the
-readings. Two processes are involved:
+(`claude-limit-watch --help` lists all the commands and options, and
+`--version` shows the version.) It starts a background recorder if one
+isn't running, then shows the readings. Two processes are involved:
 
 - **The recorder** checks usage every 5 minutes and appends each reading to
   the history file. The viewer starts it with `nohup`, in its own process

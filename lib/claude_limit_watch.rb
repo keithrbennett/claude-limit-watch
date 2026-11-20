@@ -802,6 +802,10 @@ module ClaudeLimitWatch
           (default #{DEFAULT_RATE_WINDOW_MIN}); on the panel it adds a row if it isn't 10, 30, 60 or 120.
           --lines: one line per reading instead of the full-screen panel.
           --once:  print the panel once and exit (for copying); doesn't start the recorder.
+      claude-limit-watch --help | -h
+          Show this help.
+      claude-limit-watch --version | -v
+          Show the version.
 
     #{VERSION_LINE}
   TEXT
@@ -815,7 +819,11 @@ module ClaudeLimitWatch
 
   def main(argv = ARGV)
     args = argv.dup
-    if args.first == 'record'
+    if (args & %w[--help -h]).any?
+      puts USAGE
+    elsif (args & %w[--version -v]).any?
+      puts "claude-limit-watch #{VERSION}"
+    elsif args.first == 'record'
       args.shift
       minutes = number_arg(args[0], DEFAULT_INTERVAL_MIN, MIN_INTERVAL_MIN)
       (warn USAGE; exit 1) if minutes.nil? || args.size > 1
