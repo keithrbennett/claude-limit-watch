@@ -33,7 +33,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     lines = panel(window_records, NOW)
     expect(lines.size).to eq(23)
     expect(lines[1]).to include(banner_text)
-    expect(lines).to include('  q to quit · stop the recorder with: claude-limit-watch stop')
+    expect(lines).to include(a_string_starting_with('  q to quit · stop the recorder with: claude-limit-watch stop '))
     expect(lines[-2]).to eq("  #{ClaudeLimitWatch::VERSION_LINE}")
     expect(lines[-1]).to start_with('  Recorder running (pid 1234)')
   end
@@ -65,6 +65,22 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     lines = panel(worst_records, worst_now, rows: 10, once: true) # --once ignores the terminal's height
     expect(lines[1]).to include(banner_text)
     expect(lines.grep(/q to quit/)).to be_empty
+    expect(lines).to include(a_string_matching(/\A +now 08:16\z/))
+  end
+
+  it 'shows the current time at the end of the rule' do
+    [80, 120].each do |cols|
+      lines = panel(window_records, NOW + 59, cols: cols)
+      rule = lines.find { |l| l.include?('──') }
+      expect(lines[lines.index(rule) + 1])
+        .to match(/\A  q to quit · .* {2,}now 08:00\z/).and have_attributes(size: rule.size)
+    end
+    expect(panel([], NOW, pid: nil)).to include(a_string_matching(/\A  q to quit {2,}now 08:00\z/))
+  end
+
+  it 'shows the current time in UTC with --utc, with no marker of its own' do
+    ClaudeLimitWatch::Format.utc = true
+    in_zone('Asia/Singapore') { expect(panel(window_records, NOW).grep(/now 08:00\z/)).not_to be_empty }
   end
 
   it 'never doubles a blank line' do
@@ -112,9 +128,9 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
 
     it 'says how to stop the recorder, by pid for another history file' do
-      expect(panel(window_records, NOW)).to include('  q to quit · stop the recorder with: claude-limit-watch stop')
+      expect(panel(window_records, NOW)).to include(a_string_starting_with('  q to quit · stop the recorder with: claude-limit-watch stop '))
       allow(ClaudeLimitWatch::History).to receive(:default_file).and_return('/elsewhere/history.jsonl')
-      expect(panel(window_records, NOW)).to include('  q to quit · stop the recorder with: kill 1234')
+      expect(panel(window_records, NOW)).to include(a_string_starting_with('  q to quit · stop the recorder with: kill 1234 '))
     end
 
     it 'keeps --no-record when it drops the banner' do

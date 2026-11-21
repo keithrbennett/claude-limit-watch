@@ -148,7 +148,7 @@ untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
 
              █ time so far · ▒ time left at that rate · X locked out (limit reached) · │ window ends
       ──────────────────────────────────────────────────────────────────────────────────────────────
-      q to quit · stop the recorder with: claude-limit-watch stop
+      q to quit · stop the recorder with: claude-limit-watch stop                          now 00:47
       claude-limit-watch 0.1.0 · https://github.com/keithrbennett/claude-limit-watch
       Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
 
@@ -184,8 +184,9 @@ untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
 - A failed check (expired token, 429, network) shows as a yellow line. If
   readings stop arriving, it says so, and what to do about it.
 - Below a rule, the bottom lines show how to quit and stop the recorder,
-  the version and project page, and whether the recorder is running, with
-  its pid and the history file it writes to.
+  with the current time at the right; the version and project page; and
+  whether the recorder is running, with its pid and the history file it
+  writes to. `--once` leaves out how to quit, but still shows the time.
 
 It checks for changes every second but redraws only when the text changes,
 about once a minute (times are shown to the minute), so you can select and

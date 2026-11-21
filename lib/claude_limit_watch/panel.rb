@@ -90,10 +90,15 @@ module ClaudeLimitWatch
       blank.call unless legend_drawn
       rule_w = [[legend_width, w].min - 2, 0].max
       out << paint("  #{'─' * rule_w}", GRAY)
-      unless once
-        stop = st[:recorder_pid] ? " · stop the recorder with: #{Recorder.stop_command(st[:recorder_pid])}" : ''
-        out << paint("  q to quit#{stop}", GRAY)
-      end
+      # How to quit and stop the recorder (not with --once), then the current
+      # time, ending where the rule does.
+      footer =
+        if once then ''
+        elsif st[:recorder_pid] then "q to quit · stop the recorder with: #{Recorder.stop_command(st[:recorder_pid])}"
+        else 'q to quit'
+        end
+      now_text = "now #{clock(now)}"
+      out << paint("  #{footer}#{' ' * [rule_w - footer.size - now_text.size, 2].max}#{now_text}", GRAY)
       out << paint("  #{VERSION_LINE}", GRAY)
       out << paint("  #{recorder}", GRAY)
       return out if once
