@@ -19,7 +19,7 @@ It uses only the Ruby standard library (Ruby 2.6+), so it runs on macOS's
 system Ruby. Normally you just run the viewer:
 
     claude-limit-watch [view] [rate-window-minutes]
-        [--lines] [--once] [--no-record]
+        [--lines] [--once] [--no-record] [--utc]
 
 It starts a background recorder if one isn't running (unless `--no-record`
 or `--once`), then shows the readings. `claude-limit-watch --help` lists
@@ -86,9 +86,21 @@ just to look at. A recorder that's already running keeps running, and the
 viewer still shows whether one is. If readings stop, it says so, but
 doesn't suggest starting a recorder (neither does `--once`).
 
+## Times in UTC
+
+    claude-limit-watch --utc
+
+Shows every time in UTC instead of local time: on the panel, whose heading
+then says so once for all of them (`times in UTC · last reading 09:00`), and
+in `--lines` output, which says so before the readings ("Times are in
+UTC."). Local time, the default, has no marker. `record --utc` does the same for the recorder's own
+output, and a recorder the viewer starts gets the viewer's setting, which it
+keeps for as long as it runs. It changes only what's shown: the history
+file is the same either way, since its times include their UTC offsets.
+
 ## Running the recorder yourself
 
-    claude-limit-watch record [interval-minutes]
+    claude-limit-watch record [interval-minutes] [--utc]
 
 Runs in the foreground (Ctrl-C to stop) and prints one short line per
 reading. Use this to choose a different interval (default 5; fractions OK,

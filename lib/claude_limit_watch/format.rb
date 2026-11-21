@@ -5,6 +5,11 @@ module ClaudeLimitWatch
   module Format
     extend self
 
+    class << self
+      # Whether times are shown in UTC (--utc) rather than local time.
+      attr_accessor :utc
+    end
+
     # Minutes for display: "5", "2.5".
     def num(minutes)
       minutes == minutes.round ? minutes.round.to_s : minutes.to_s
@@ -22,8 +27,19 @@ module ClaudeLimitWatch
       m < 60 ? "#{m}m" : format('%dh%02dm', m / 60, m % 60)
     end
 
-    def clock(time)
-      time.localtime.strftime('%H:%M')
+    # A time of day, in local time or (with --utc) UTC: "08:00", or with
+    # seconds, "08:00:15".
+    # Through UTC, since getlocal leaves a time that's already local as it is,
+    # in whatever zone was local when its local fields were worked out.
+    def clock(time, seconds: false)
+      t = Format.utc ? time.getutc : time.getutc.getlocal
+      t.strftime(seconds ? '%H:%M:%S' : '%H:%M')
+    end
+
+    # A note that times are in UTC, for the text that introduces them; empty
+    # for local time.
+    def zone_note
+      Format.utc ? ' Times are in UTC.' : ''
     end
 
     # Duration in seconds, in unambiguous units: "1h 12m", "58m", "3m 48s", "48s".

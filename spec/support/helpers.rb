@@ -29,6 +29,15 @@ module SpecHelpers
     records[0...-1].map { |r| { t: r[:t], util: r[:util] } }
   end
 
+  # Runs the block with local time in another zone (the specs run in UTC).
+  def in_zone(tz)
+    saved = ENV['TZ']
+    ENV['TZ'] = tz
+    yield
+  ensure
+    ENV['TZ'] = saved
+  end
+
   def plain(lines)
     lines.map { |l| l.gsub(ClaudeLimitWatch::Term::ANSI_RE, '') }
   end

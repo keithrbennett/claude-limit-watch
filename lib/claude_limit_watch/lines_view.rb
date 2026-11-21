@@ -29,7 +29,7 @@ module ClaudeLimitWatch
         if p[:util] >= 100
           "AT LIMIT, resets in #{hm(p[:reset_min])}"
         elsif p[:eta_min] && p[:left_at_reset].nil?
-          "LIMIT at #{(now + (p[:eta_min] * 60)).strftime('%H:%M')} (in #{hm(p[:eta_min])}), " \
+          "LIMIT at #{clock(now + (p[:eta_min] * 60))} (in #{hm(p[:eta_min])}), " \
             "#{hm(p[:reset_min] - p[:eta_min])} before reset"
         elsif p[:left_at_reset]
           "~#{p[:left_at_reset].round}% left at reset"
@@ -38,7 +38,7 @@ module ClaudeLimitWatch
         end
       label = { ok: 'OK    ', projected: 'WARN  ', urgent: 'URGENT' }[p[:level]]
       pace = p[:pace]&.finite? ? format('%.1fx', p[:pace]) : 'n/a'
-      [now.strftime('%H:%M'), label, "#{hm(p[:elapsed_min])} of 5:00", p[:resets].localtime.strftime('%H:%M'),
+      [clock(now), label, "#{hm(p[:elapsed_min])} of 5:00", clock(p[:resets]),
        format('%3d%%', p[:util].round), rate_txt.ljust(RATE_COL), pace.rjust(5), outlook].join(' | ')
     end
 
@@ -46,7 +46,7 @@ module ClaudeLimitWatch
     # recorder's, or nil; record: as for run.
     def stale_line(now, last_t, pid, record:)
       hint = Recorder.stale_hint(pid, record: record)
-      paint("#{now.strftime('%H:%M')} | no new readings for #{dur(now - last_t)}.#{" #{hint}" if hint}", WARN)
+      paint("#{clock(now)} | no new readings for #{dur(now - last_t)}.#{" #{hint}" if hint}", WARN)
     end
 
     # The lines before the readings. pid: the running recorder's, or nil;
@@ -55,7 +55,7 @@ module ClaudeLimitWatch
       keeps = pid ? ' (the recorder keeps running)' : ''
       [paint(recorder_message, GRAY),
        paint("Claude 5-hour limit, from #{History.file}; burn rate over the last " \
-             "#{num(rate_window)}m. Ctrl-C to quit#{keeps}.", GRAY),
+             "#{num(rate_window)}m.#{zone_note} Ctrl-C to quit#{keeps}.", GRAY),
        paint(VERSION_LINE, GRAY),
        paint(header(rate_window), GRAY)]
     end
@@ -83,7 +83,7 @@ module ClaudeLimitWatch
         records.each_with_index do |rec, i|
           next unless rec[:t] > shown_t
 
-          stamp = rec[:t].strftime('%H:%M')
+          stamp = clock(rec[:t])
           if rec[:error]
             puts paint("#{stamp} | no reading: #{rec[:error]}", GRAY)
           elsif rec[:resets].nil? || rec[:resets] <= rec[:t]

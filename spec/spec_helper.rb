@@ -35,6 +35,7 @@ RSpec.configure do |config|
     raise "the example changed the history file to: #{file}" unless file == SPEC_HISTORY_FILE
   ensure
     ClaudeLimitWatch::History.file = SPEC_HISTORY_FILE
+    ClaudeLimitWatch::Format.utc = nil # --utc sets it
   end
 
   # The spec history file stands in for the default one, as for most users;

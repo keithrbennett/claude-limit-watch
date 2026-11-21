@@ -12,4 +12,5 @@ First release as a gem.
 - `--lines` output (one line per reading) and `--once` (print the panel
   once).
 - `--no-record`: view the history file without starting a recorder.
+- `--utc`: show times in UTC instead of local time.
 - `--help` and `--version`.

@@ -104,6 +104,37 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     FileUtils.rm_f(ClaudeLimitWatch::History.lock_file) # its lock, still held
   end
 
+  describe '.record_once' do
+    before do
+      allow(Time).to receive(:now).and_return(NOW + 15)
+      allow(ClaudeLimitWatch::UsageApi).to receive(:fetch_five_hour).and_return([46.0, NOW + 3600])
+    end
+
+    it 'prints the reading in local time' do
+      in_zone('Asia/Singapore') do
+        expect { m.record_once(5) }.to output("16:00:15   46%  window ends 17:00\n").to_stdout
+      end
+    end
+
+    it 'prints it in UTC with --utc' do
+      ClaudeLimitWatch::Format.utc = true
+      in_zone('Asia/Singapore') do
+        expect { m.record_once(5) }.to output("08:00:15   46%  window ends 09:00\n").to_stdout
+      end
+    end
+  end
+
+  it 'says in UTC when it starts recording with --utc' do
+    ClaudeLimitWatch::Format.utc = true
+    allow(m).to receive(:trap)
+    allow(ClaudeLimitWatch::History).to receive(:prune)
+    allow(m).to receive(:record_once)
+    allow(m).to receive(:sleep).and_raise(StopIteration)
+    expect { m.run(5) }.to output(/\(pid \d+\)\. Times are in UTC\. Stop with Ctrl-C/).to_stdout
+  ensure
+    FileUtils.rm_f(ClaudeLimitWatch::History.lock_file)
+  end
+
   it 'says so when asked to stop with no recorder running' do
     expect { m.stop }.to output("No recorder is running.\n").to_stdout
   end
@@ -139,6 +170,15 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     it 'says when none is' do
       expect(m.status).to eq([nil, 'No recorder is running.'])
     end
+  end
+
+  it 'starts the recorder with --utc when the viewer has it' do
+    ClaudeLimitWatch::Format.utc = true
+    expect(Process).to receive(:spawn).with(Hash, 'nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE,
+                                            'record', '--utc', Hash).and_return(999)
+    allow(Process).to receive(:detach)
+    allow(m).to receive(:pid).and_return(999)
+    expect(m.start).to eq(999)
   end
 
   describe '.stop_command' do

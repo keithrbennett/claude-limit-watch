@@ -8,14 +8,15 @@ module ClaudeLimitWatch
     def usage
       <<~TEXT
         Usage:
-          claude-limit-watch record [interval-minutes]
+          claude-limit-watch record [interval-minutes] [--utc]
               Check usage every N minutes (default #{DEFAULT_INTERVAL_MIN}; #{MIN_INTERVAL_MIN} or more) and append
               each reading to #{History.file}.
+              --utc: show times in UTC instead of local time.
           claude-limit-watch stop
               Stop the recorder for this history file. If the recorder was started
               with CLAUDE_LIMIT_WATCH_FILE set, set it to the same value here.
           claude-limit-watch [view] [rate-window-minutes]
-                             [--lines] [--once] [--no-record]
+                             [--lines] [--once] [--no-record] [--utc]
               Show the readings, first starting the recorder in the background if it
               isn't running (except with --no-record or --once).
               rate-window-minutes: the look-back for --lines output's burn rate
@@ -24,6 +25,7 @@ module ClaudeLimitWatch
               --lines:     one line per reading instead of the full-screen panel.
               --once:      print the panel once and exit (for copying).
               --no-record: don't start the recorder; just show the history file.
+              --utc:       show times in UTC instead of local time.
           claude-limit-watch --help | -h
               Show this help.
           claude-limit-watch --version | -v
@@ -41,6 +43,7 @@ module ClaudeLimitWatch
         puts "claude-limit-watch #{VERSION}"
       elsif args.first == 'record'
         args.shift
+        utc_option(args)
         minutes = number_arg(args[0], DEFAULT_INTERVAL_MIN, MIN_INTERVAL_MIN)
         usage_error if minutes.nil? || args.size > 1
         Recorder.run(minutes)
@@ -56,6 +59,7 @@ module ClaudeLimitWatch
 
     def view(args)
       args.shift if args.first == 'view'
+      utc_option(args)
       lines_mode = !args.delete('--lines').nil?
       once = !args.delete('--once').nil?
       record = args.delete('--no-record').nil?
@@ -73,6 +77,11 @@ module ClaudeLimitWatch
         Recorder.ensure_running if record
         Panel.run(rate_window, record: record)
       end
+    end
+
+    # Takes --utc out of the arguments; times are in UTC if it was there.
+    def utc_option(args)
+      Format.utc = !args.delete('--utc').nil?
     end
 
     # The argument as a number, or the default if it's missing; nil if it

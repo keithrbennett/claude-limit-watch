@@ -14,6 +14,34 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     expect { m.main(['--help']) }.to output(/--lines.*--once.*--no-record: don't start the recorder/m).to_stdout
   end
 
+  it 'lists --utc in the help' do
+    expect { m.main(['--help']) }.to output(/record .*--utc.*--utc: +show times in UTC/m).to_stdout
+  end
+
+  it 'shows times in UTC with --utc, and in local time without it' do
+    allow(ClaudeLimitWatch::Panel).to receive(:run_once)
+    m.main(%w[--once --utc])
+    expect(ClaudeLimitWatch::Format.utc).to be(true)
+    m.main(%w[--once])
+    expect(ClaudeLimitWatch::Format.utc).to be(false)
+  end
+
+  it 'rejects --utc for stop, which shows no times' do
+    expect(ClaudeLimitWatch::Recorder).not_to receive(:stop)
+    expect do
+      expect { m.main(%w[stop --utc]) }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+    end.to output(/\AUsage:/).to_stderr
+  end
+
+  it 'takes --utc before or after the interval, for the recorder too' do
+    expect(ClaudeLimitWatch::Recorder).to receive(:run).with(2.0).twice
+    [%w[record --utc 2], %w[record 2 --utc]].each do |args|
+      ClaudeLimitWatch::Format.utc = nil
+      m.main(args)
+      expect(ClaudeLimitWatch::Format.utc).to be(true)
+    end
+  end
+
   ['--version', '-v', 'stop -v'].each do |args|
     it "prints the version for: #{args}" do
       expect { m.main(args.split) }.to output("claude-limit-watch #{ClaudeLimitWatch::VERSION}\n").to_stdout

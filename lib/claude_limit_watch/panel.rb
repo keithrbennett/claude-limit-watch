@@ -26,6 +26,7 @@ module ClaudeLimitWatch
       bar_w = (w - 47).clamp(10, 50) # leaves room for the projection rows' text
       p = st[:proj]
       info = st[:last_t] ? "last reading #{clock(st[:last_t])} (#{dur_m(now - st[:last_t])} ago)" : 'no readings yet'
+      info = "times in UTC · #{info}" if Format.utc # covers every time on the panel
       out = []
       blank = -> { out << '' unless out.last.empty? } # a blank line, never two
       banner_drawn = show_banner && w >= banner_rows.map(&:size).max + 4

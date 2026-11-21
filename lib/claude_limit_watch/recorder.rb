@@ -28,7 +28,7 @@ module ClaudeLimitWatch
       # that started the viewer doesn't stop a background recorder.
       %w[INT TERM].each { |sig| trap(sig) { exit 0 } }
 
-      puts "Recording the Claude 5-hour usage every #{num(minutes)}m to #{History.file} (pid #{Process.pid}). " \
+      puts "Recording the Claude 5-hour usage every #{num(minutes)}m to #{History.file} (pid #{Process.pid}).#{zone_note} " \
            "Stop with Ctrl-C or: #{stop_command(Process.pid)}"
       last_prune = nil
       loop do
@@ -47,7 +47,7 @@ module ClaudeLimitWatch
     def record_once(minutes)
       now = Time.now
       reading = UsageApi.fetch_five_hour
-      stamp = now.strftime('%H:%M:%S')
+      stamp = clock(now, seconds: true)
       if reading.is_a?(String)
         History.append('t' => now.iso8601, 'interval_min' => minutes, 'error' => reading)
         puts "#{stamp}  error: #{reading}"
@@ -97,12 +97,13 @@ module ClaudeLimitWatch
 
     # Starts `record` in the background with nohup, in its own process group so
     # Ctrl-C in the viewer's terminal doesn't reach it, recording to this
-    # process's history file. Returns its pid (or nil if it didn't come up).
+    # process's history file, with --utc if this process has it. Returns its
+    # pid (or nil if it didn't come up).
     def start
       log = History.log_file
       FileUtils.mkdir_p(File.dirname(log))
       child = Process.spawn({ 'CLAUDE_LIMIT_WATCH_FILE' => History.file },
-                            'nohup', RbConfig.ruby, EXECUTABLE, 'record',
+                            'nohup', RbConfig.ruby, EXECUTABLE, 'record', *('--utc' if Format.utc),
                             in: File::NULL, out: [log, 'a'], err: [:child, :out], pgroup: true)
       Process.detach(child)
       wait_for_pid

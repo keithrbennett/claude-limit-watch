@@ -22,6 +22,16 @@ RSpec.describe ClaudeLimitWatch::LinesView do
       expect(f[7]).to eq('LIMIT at 09:23 (in 1:23), 0:17 before reset')
     end
 
+    it 'shows times in local time, or UTC with --utc' do
+      in_zone('Asia/Singapore') do
+        expect(fields(50.0, 0.6, 100).values_at(0, 3, 7))
+          .to eq(['16:00', '17:40', 'LIMIT at 17:23 (in 1:23), 0:17 before reset'])
+        ClaudeLimitWatch::Format.utc = true
+        expect(fields(50.0, 0.6, 100).values_at(0, 3, 7))
+          .to eq(['08:00', '09:40', 'LIMIT at 09:23 (in 1:23), 0:17 before reset'])
+      end
+    end
+
     it 'formats a line at the limit' do
       f = fields(100.0, 0.5, 30)
       expect(f[1]).to eq('URGENT')
@@ -56,6 +66,12 @@ RSpec.describe ClaudeLimitWatch::LinesView do
       expect(lines[3]).to start_with('Time  | Level')
     end
 
+    it 'says when times are in UTC' do
+      expect(intro(nil, 'x')[1]).not_to include('UTC')
+      ClaudeLimitWatch::Format.utc = true
+      expect(intro(nil, 'x')[1]).to include('burn rate over the last 45m. Times are in UTC. Ctrl-C to quit.')
+    end
+
     it "doesn't say the recorder keeps running when none is" do
       expect(intro(nil, "Couldn't start the recorder")[1]).to end_with('Ctrl-C to quit.')
     end
@@ -87,6 +103,15 @@ RSpec.describe ClaudeLimitWatch::LinesView do
       expect(lines.first).to eq('recorder message')
       expect(lines.grep(/\A\d\d:\d\d \| (OK|WARN|URGENT)/).size).to eq(window_records.size)
       expect(lines.last).to eq('08:15 | no new readings for 15m. Restart the viewer, or see recorder.log')
+    end
+
+    it 'shows the readings and the warning in UTC with --utc' do
+      ClaudeLimitWatch::Format.utc = true
+      in_zone('Asia/Singapore') do
+        lines = run_once(record: true, pid: nil)
+        expect(lines.grep(/\A\d\d:\d\d \| (OK|WARN|URGENT)/).last).to start_with('08:00 |')
+        expect(lines.last).to start_with('08:15 | no new readings')
+      end
     end
 
     it 'passes --no-record and the running recorder to the warning' do

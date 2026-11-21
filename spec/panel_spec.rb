@@ -199,4 +199,24 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     expect(lines.grep(/AT LIMIT.*Resets at/)).not_to be_empty
     expect(lines.grep(/time so far/)).to be_empty
   end
+
+  describe 'times' do
+    def times(lines)
+      [lines.grep(/last reading/).first[/(times in UTC · )?last reading \S+/], lines.grep(/\A +\d\d:\d\d +\d\d:\d\d\z/).first.split]
+    end
+
+    it 'shows local time' do
+      in_zone('Asia/Singapore') do
+        expect(times(panel(window_records, NOW))).to eq(['last reading 16:00', %w[12:40 17:40]])
+      end
+    end
+
+    it 'shows UTC with --utc, and says so' do
+      ClaudeLimitWatch::Format.utc = true
+      in_zone('Asia/Singapore') do
+        expect(times(panel(window_records, NOW))).to eq(['times in UTC · last reading 08:00', %w[04:40 09:40]])
+        expect(panel(window_records, NOW).grep(/limit at 0\d:\d\d/)).not_to be_empty
+      end
+    end
+  end
 end
