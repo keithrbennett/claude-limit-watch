@@ -8,9 +8,10 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Keith R. Bennett']
   spec.email         = ['keithrbennett@gmail.com']
 
-  spec.summary       = "Watch the Claude subscription's 5-hour usage limit"
+  spec.summary       = "Watch the Claude subscription's 5-hour usage limit (unofficial)"
   spec.description   = 'Records Claude subscription usage in the background and shows a terminal ' \
-                       'dashboard projecting when the 5-hour usage limit will be reached at recent burn rates.'
+                       'dashboard projecting when the 5-hour usage limit will be reached at recent burn rates. ' \
+                       'Unofficial: not affiliated with Anthropic; uses an undocumented usage endpoint.'
   spec.license       = 'MIT'
 
   spec.homepage      = ClaudeLimitWatch::HOMEPAGE

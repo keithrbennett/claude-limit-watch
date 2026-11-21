@@ -4,6 +4,11 @@
 
 Watch the Claude subscription's 5-hour usage limit.
 
+**Unofficial.** claude-limit-watch isn't made, endorsed or supported by
+Anthropic. It reads your usage from an undocumented endpoint, which may
+change or stop working at any time. It uses the OAuth token Claude Code
+stores on your machine, and sends it only to `api.anthropic.com`.
+
 ![The claude-limit-watch dashboard](docs/images/dashboard.png)
 
 ## Installation
@@ -30,6 +35,25 @@ processes are involved:
   soon as it starts. **rate-window-minutes** (default 30) is how far back
   the burn rate looks in `--lines` output; on the panel it adds a row to
   the projection bars if it isn't one of 10, 30, 60 or 120.
+
+### Upgrading
+
+    gem update claude-limit-watch
+    claude-limit-watch stop
+
+A running recorder keeps running the version it started with, and a viewer
+uses a running recorder rather than starting its own. So after updating,
+stop the recorder (see [Stopping the recorder](#stopping-the-recorder));
+the next viewer starts the new version.
+
+### Platforms
+
+Linux and macOS; CI tests both, on Ruby 2.6 through 4.0. On Windows, use
+WSL, where it should run as on Linux (untested). There it reads Claude
+Code's credentials from `~/.claude/.credentials.json` inside WSL, so Claude
+Code needs to be signed in there too. Native Windows isn't supported: the
+viewer starts the recorder with `nohup` in its own Unix process group, and
+the panel reads keys through `stty`.
 
 ## Stopping the recorder
 
@@ -209,7 +233,6 @@ muted text color. Colors are off when `NO_COLOR` is set.
   window is coarse: over 10 minutes, one point is 6 %/h.
 - If no Claude Code session has run for a while the token may be expired;
   the recorder logs that until Claude Code refreshes it.
-- Works on Linux and macOS (stdlib Ruby 2.6+).
 
 ## Development
 
