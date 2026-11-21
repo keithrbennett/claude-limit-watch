@@ -13,4 +13,6 @@ First release as a gem.
   once).
 - `--no-record`: view the history file without starting a recorder.
 - `--utc`: show times in UTC instead of local time.
+- `--file PATH` (any command): the history file to use, instead of setting
+  `CLAUDE_LIMIT_WATCH_FILE`.
 - `--help` and `--version`.

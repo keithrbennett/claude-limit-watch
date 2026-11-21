@@ -3,6 +3,7 @@
 module ClaudeLimitWatch
   # The command line.
   module CLI
+    include Format
     extend self
 
     def usage
@@ -10,11 +11,11 @@ module ClaudeLimitWatch
         Usage:
           claude-limit-watch record [interval-minutes] [--utc]
               Check usage every N minutes (default #{DEFAULT_INTERVAL_MIN}; #{MIN_INTERVAL_MIN} or more) and append
-              each reading to #{History.file}.
+              each reading to #{home_relative(History.file)}.
               --utc: show times in UTC instead of local time.
           claude-limit-watch stop
-              Stop the recorder for this history file. If the recorder was started
-              with CLAUDE_LIMIT_WATCH_FILE set, set it to the same value here.
+              Stop the recorder for this history file: for a recorder started
+              with --file or CLAUDE_LIMIT_WATCH_FILE, give the same file here.
           claude-limit-watch [view] [rate-window-minutes]
                              [--lines] [--once] [--no-record] [--utc]
               Show the readings, first starting the recorder in the background if it
@@ -31,12 +32,17 @@ module ClaudeLimitWatch
           claude-limit-watch --version | -v
               Show the version.
 
+        Every command also takes:
+          --file PATH: the history file to use (default: $CLAUDE_LIMIT_WATCH_FILE
+                       if set, or #{home_relative(History.default_file)}).
+
         #{VERSION_LINE}
       TEXT
     end
 
     def main(argv = ARGV)
       args = argv.dup
+      file_option(args)
       if (args & %w[--help -h]).any?
         puts usage
       elsif (args & %w[--version -v]).any?
@@ -77,6 +83,20 @@ module ClaudeLimitWatch
         Recorder.ensure_running if record
         Panel.run(rate_window, record: record)
       end
+    end
+
+    # Takes --file PATH (or --file=PATH) out of the arguments, and uses that
+    # history file.
+    def file_option(args)
+      file_arg = ->(a) { a == '--file' || a.start_with?('--file=') }
+      i = args.index(&file_arg)
+      return unless i
+
+      arg = args.delete_at(i)
+      # A separate path can't look like an option (--file --once); with = it can.
+      path = arg == '--file' ? args.delete_at(i) : arg.sub('--file=', '')
+      usage_error if path.nil? || path.empty? || (arg == '--file' && path.start_with?('-')) || args.any?(&file_arg)
+      History.file = File.expand_path(path)
     end
 
     # Takes --utc out of the arguments; times are in UTC if it was there.

@@ -38,4 +38,4 @@ jobs:
         run: |
           exe/claude-limit-watch --version
           exe/claude-limit-watch --help
-          CLAUDE_LIMIT_WATCH_FILE="$RUNNER_TEMP/history.jsonl" exe/claude-limit-watch --once
+          exe/claude-limit-watch --once --file "$RUNNER_TEMP/history.jsonl"

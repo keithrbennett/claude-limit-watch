@@ -26,6 +26,59 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     expect(ClaudeLimitWatch::Format.utc).to be(false)
   end
 
+  describe '--file' do
+    let(:history) { ClaudeLimitWatch::History }
+
+    it 'uses the history file it names, for any command' do
+      expect(history).to receive(:file=).with('/x/h.jsonl')
+      expect(ClaudeLimitWatch::Recorder).to receive(:stop)
+      m.main(%w[stop --file /x/h.jsonl])
+    end
+
+    it 'takes --file=PATH too, before the command' do
+      expect(history).to receive(:file=).with('/x/h.jsonl')
+      expect(ClaudeLimitWatch::Recorder).to receive(:run).with(5.0)
+      m.main(%w[--file=/x/h.jsonl record])
+    end
+
+    it 'makes a relative path absolute, for the recorder it starts' do
+      expect(history).to receive(:file=).with(File.join(Dir.pwd, 'h.jsonl'))
+      allow(ClaudeLimitWatch::Panel).to receive(:run_once)
+      m.main(%w[--once --file h.jsonl])
+    end
+
+    it 'takes precedence over CLAUDE_LIMIT_WATCH_FILE' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('CLAUDE_LIMIT_WATCH_FILE').and_return('/env/h.jsonl')
+      used = nil
+      allow(ClaudeLimitWatch::Panel).to receive(:run_once) { used = history.file }
+      history.file = nil # as at startup, before anything reads it
+      m.main(%w[--once --file /x/h.jsonl])
+      expect(used).to eq('/x/h.jsonl')
+    ensure
+      history.file = SPEC_HISTORY_FILE
+    end
+
+    it 'takes a path starting with - after =' do
+      expect(history).to receive(:file=).with(File.join(Dir.pwd, '-x'))
+      allow(ClaudeLimitWatch::Panel).to receive(:run_once)
+      m.main(%w[--once --file=-x])
+    end
+
+    ['--file', '--file=', '--file --once', '--file a --file b', '--file=a --file=b --help'].each do |args|
+      it "rejects a missing or repeated path: #{args}" do
+        expect(history).not_to receive(:file=)
+        expect do
+          expect { m.main(args.split) }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+        end.to output(/\AUsage:/).to_stderr
+      end
+    end
+
+    it 'is in the help' do
+      expect { m.main(['--help']) }.to output(/Every command also takes:\n  --file PATH: the history file/).to_stdout
+    end
+  end
+
   it 'rejects --utc for stop, which shows no times' do
     expect(ClaudeLimitWatch::Recorder).not_to receive(:stop)
     expect do

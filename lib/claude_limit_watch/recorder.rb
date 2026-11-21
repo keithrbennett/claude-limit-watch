@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'rbconfig'
+require 'shellwords'
 require 'time'
 
 module ClaudeLimitWatch
@@ -97,13 +98,14 @@ module ClaudeLimitWatch
 
     # Starts `record` in the background with nohup, in its own process group so
     # Ctrl-C in the viewer's terminal doesn't reach it, recording to this
-    # process's history file, with --utc if this process has it. Returns its
-    # pid (or nil if it didn't come up).
+    # process's history file (given with --file, which takes precedence over
+    # any CLAUDE_LIMIT_WATCH_FILE it inherits), with --utc if this process has
+    # it. Returns its pid (or nil if it didn't come up).
     def start
       log = History.log_file
       FileUtils.mkdir_p(File.dirname(log))
-      child = Process.spawn({ 'CLAUDE_LIMIT_WATCH_FILE' => History.file },
-                            'nohup', RbConfig.ruby, EXECUTABLE, 'record', *('--utc' if Format.utc),
+      child = Process.spawn('nohup', RbConfig.ruby, EXECUTABLE, 'record', '--file', File.expand_path(History.file),
+                            *('--utc' if Format.utc),
                             in: File::NULL, out: [log, 'a'], err: [:child, :out], pgroup: true)
       Process.detach(child)
       wait_for_pid
@@ -112,7 +114,7 @@ module ClaudeLimitWatch
     # What to do when readings have stopped coming in, or nil. pid: the
     # running recorder's, or nil. record: whether this viewer starts the
     # recorder (not with --no-record or --once); restarting it the same way
-    # also keeps its CLAUDE_LIMIT_WATCH_FILE. Short, for the panel, which
+    # also keeps its history file. Short, for the panel, which
     # truncates lines to the terminal's width.
     def stale_hint(pid, record:)
       if pid
@@ -148,11 +150,14 @@ module ClaudeLimitWatch
     end
 
     # How to stop the recorder with this pid. `claude-limit-watch stop` finds
-    # the recorder by its history file, so for any but the default file it
-    # would need the same CLAUDE_LIMIT_WATCH_FILE; kill works either way.
-    def stop_command(pid)
-      default = File.expand_path(History.file) == File.expand_path(History.default_file)
-      default ? 'claude-limit-watch stop' : "kill #{pid}"
+    # the recorder by its history file, so it needs --file unless a bare
+    # `stop` means this file in any shell: it's the default, and
+    # CLAUDE_LIMIT_WATCH_FILE doesn't name another one. brief: kill instead
+    # of --file, for the panel's footer, which has no room for a path.
+    def stop_command(pid, brief: false)
+      return 'claude-limit-watch stop' if bare_stop_works?
+
+      brief ? "kill #{pid}" : "claude-limit-watch stop --file #{Shellwords.escape(File.expand_path(History.file))}"
     end
 
     def stop_hint(pid)
@@ -202,6 +207,12 @@ module ClaudeLimitWatch
     end
 
     private
+
+    def bare_stop_works?
+      file = File.expand_path(History.file)
+      env = ENV['CLAUDE_LIMIT_WATCH_FILE']
+      file == File.expand_path(History.default_file) && (env.nil? || File.expand_path(env) == file)
+    end
 
     # Whether something else holds the lock on f.
     def held?(f)

@@ -12,7 +12,7 @@ module ClaudeLimitWatch
     KEEP_DAYS = 7 # the recorder drops readings older than this
 
     # The history file's path: $CLAUDE_LIMIT_WATCH_FILE, or history.jsonl in
-    # the XDG state directory. Settable, for a different file.
+    # the XDG state directory. Settable, for a different file (--file).
     attr_writer :file
 
     def file

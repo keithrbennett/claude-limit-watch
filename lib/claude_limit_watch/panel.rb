@@ -94,7 +94,7 @@ module ClaudeLimitWatch
       # time, ending where the rule does.
       footer =
         if once then ''
-        elsif st[:recorder_pid] then "q to quit · stop the recorder with: #{Recorder.stop_command(st[:recorder_pid])}"
+        elsif st[:recorder_pid] then "q to quit · stop the recorder with: #{Recorder.stop_command(st[:recorder_pid], brief: true)}"
         else 'q to quit'
         end
       now_text = "now #{clock(now)}"
