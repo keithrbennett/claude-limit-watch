@@ -4,7 +4,7 @@
 # Ctrl-C. Usage:
 #
 #   ruby script/demo_history.rb [history-file]       # in one terminal
-#   CLAUDE_LIMIT_WATCH_FILE=<history-file> exe/claude-limit-watch   # in another
+#   exe/claude-limit-watch --file <history-file>      # in another
 #
 # The scenario: 3h20m into the window at 60% used, after an early burst and a
 # recent surge, so the 10m and 30m rows run out (green time left, then red
@@ -15,6 +15,7 @@
 # also why --no-record isn't needed to view it.
 
 require 'fileutils'
+require 'shellwords'
 require 'json'
 require 'time'
 
@@ -52,7 +53,7 @@ lock.flush
 
 %w[INT TERM].each { |sig| trap(sig) { exit 0 } }
 puts "Writing demo history to #{file} every minute (pid #{Process.pid}). Ctrl-C to stop. View it with:"
-puts "  CLAUDE_LIMIT_WATCH_FILE=#{file} exe/claude-limit-watch"
+puts "  exe/claude-limit-watch --file #{Shellwords.escape(file)}"
 loop do
   write_history(file)
   sleep 60

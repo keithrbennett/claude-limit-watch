@@ -11,12 +11,24 @@ module ClaudeLimitWatch
 
     KEEP_DAYS = 7 # the recorder drops readings older than this
 
-    # The history file's path: $CLAUDE_LIMIT_WATCH_FILE, or history.jsonl in
-    # the XDG state directory. Settable, for a different file.
-    attr_writer :file
-
+    # The history file's absolute path: $CLAUDE_LIMIT_WATCH_FILE (if set and
+    # not empty), or history.jsonl in the XDG state directory. Settable, for a different file
+    # (--file). Made absolute (and ~ expanded) once, here, so the viewer, the
+    # recorder it starts and the stop hint all name the same file. Raises
+    # ArgumentError for a path that can't be expanded, such as ~nosuchuser/x.
     def file
-      @file ||= ENV['CLAUDE_LIMIT_WATCH_FILE'] || default_file
+      @file ||= File.expand_path(env_file || default_file)
+    end
+
+    def file=(path)
+      @file = path && File.expand_path(path)
+    end
+
+    # $CLAUDE_LIMIT_WATCH_FILE as given, or nil if it's unset or empty (an
+    # empty path would otherwise mean the current directory).
+    def env_file
+      env = ENV['CLAUDE_LIMIT_WATCH_FILE']
+      env unless env.nil? || env.empty?
     end
 
     # The history file when $CLAUDE_LIMIT_WATCH_FILE isn't set.

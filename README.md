@@ -19,7 +19,7 @@ It uses only the Ruby standard library (Ruby 2.6+), so it runs on macOS's
 system Ruby. Normally you just run the viewer:
 
     claude-limit-watch [view] [rate-window-minutes]
-        [--lines] [--once] [--no-record] [--utc]
+        [--lines] [--once] [--no-record] [--utc] [--file PATH]
 
 It starts a background recorder if one isn't running (unless `--no-record`
 or `--once`), then shows the readings. `claude-limit-watch --help` lists
@@ -61,10 +61,15 @@ the panel reads keys through `stty`.
 
 The viewer shows this at the bottom of the screen with the recorder's pid,
 and prints it again when you quit (q or Ctrl-C), so it stays in your
-scrollback. `stop` finds the recorder by the history file, so with
-`CLAUDE_LIMIT_WATCH_FILE` set, run it with the same value. `kill <pid>`
-works either way, and for a history file other than the default, that's
-what the viewer shows instead.
+scrollback. `stop` finds the recorder by its history file, so for a
+history file other than the default, give `stop` the same file:
+
+    claude-limit-watch stop --file PATH
+
+That's what the viewer prints for such a file, and for the default file
+when `CLAUDE_LIMIT_WATCH_FILE` names another one (where a bare `stop` would
+find that one). The bottom of the panel has no room for a path, so in those
+cases it shows `kill <pid>` there instead, which works for any recorder.
 
 The viewer starts the recorder only when it launches. If you stop the
 recorder while a viewer is open, the viewer reports that readings have
@@ -79,33 +84,35 @@ history file.
 
     claude-limit-watch --no-record
 
-The viewer doesn't start a recorder; it just shows the history file. Use it
-for a history file that nothing should record to: a copy from another
-machine, a demo file, or a file you point `CLAUDE_LIMIT_WATCH_FILE` at
-just to look at. A recorder that's already running keeps running, and the
-viewer still shows whether one is. If readings stop, it says so, but
-doesn't suggest starting a recorder (neither does `--once`).
+The viewer doesn't start a recorder; it just shows the history file. Use it for
+a history file that nothing should record to: a copy from another machine, a
+demo file, or any file you point `--file` at just to look at. A recorder that's
+already running keeps running, and the viewer still shows whether one is. If
+readings stop, it says so, but doesn't suggest starting a recorder (neither does
+`--once`).
 
 ## Times in UTC
 
     claude-limit-watch --utc
 
-Shows every time in UTC instead of local time: on the panel, whose heading
-then says so once for all of them (`times in UTC · last reading 09:00`), and
-in `--lines` output, which says so before the readings ("Times are in
-UTC."). Local time, the default, has no marker. `record --utc` does the same for the recorder's own
-output, and a recorder the viewer starts gets the viewer's setting, which it
-keeps for as long as it runs. It changes only what's shown: the history
-file is the same either way, since its times include their UTC offsets.
+Shows every time in UTC instead of local time: on the panel, whose heading then
+says so once for all of them (`times in UTC · last reading 09:00`), and in
+`--lines` output, which says so before the readings ("Times are in UTC."). Local
+time, the default, has no marker. `record --utc` does the same for the
+recorder's own output, and a recorder the viewer starts gets the viewer's
+setting, which it keeps for as long as it runs. It changes only what's shown:
+the history file is the same either way, since its times include their UTC
+offsets.
 
 ## Running the recorder yourself
 
-    claude-limit-watch record [interval-minutes] [--utc]
+    claude-limit-watch record [interval-minutes] [--utc] [--file PATH]
 
 Runs in the foreground (Ctrl-C to stop) and prints one short line per
 reading. Use this to choose a different interval (default 5; fractions OK,
 minimum 0.5): start it before the viewer, and the viewer will use it instead
-of starting its own.
+of starting its own. A viewer finds a recorder by its history file, so give
+both the same `--file`, if any.
 
 Polling every few seconds gets HTTP 429 from the usage endpoint, hence the
 0.5-minute minimum. Its actual rate limit isn't documented.
@@ -113,9 +120,12 @@ Polling every few seconds gets HTTP 429 from the usage endpoint, hence the
 ## History file
 
 `~/.local/state/claude-limit-watch/history.jsonl` (or under
-`$XDG_STATE_HOME`; override with `CLAUDE_LIMIT_WATCH_FILE`). JSON Lines: one
-JSON object per reading, appended, so the viewer never sees a half-rewritten
-file:
+`$XDG_STATE_HOME`). Every command takes `--file PATH` to use another one,
+or you can set `CLAUDE_LIMIT_WATCH_FILE`; `--file` wins if both are given.
+A recorder the viewer starts uses the viewer's history file.
+
+JSON Lines: one JSON object per reading, appended, so the viewer never sees
+a half-rewritten file:
 
     {"t":"2026-11-17T23:19:47+08:00","interval_min":5.0,"util":46.0,"resets_at":"2026-11-17T18:09:59Z"}
     {"t":"2026-11-17T23:24:47+08:00","interval_min":5.0,"error":"HTTP 429 from usage endpoint"}

@@ -27,6 +27,28 @@ RSpec.describe ClaudeLimitWatch::History do
       expect([m.file, m.lock_file, m.log_file]).to eq(['/x/h.jsonl', '/x/h.jsonl.lock', '/x/recorder.log'])
     end
 
+    it 'makes CLAUDE_LIMIT_WATCH_FILE absolute, expanding ~' do
+      env('CLAUDE_LIMIT_WATCH_FILE' => '~/h.jsonl')
+      expect(m.file).to eq(File.join(Dir.home, 'h.jsonl'))
+      env('CLAUDE_LIMIT_WATCH_FILE' => 'rel/h.jsonl')
+      expect(m.file).to eq(File.join(Dir.pwd, 'rel/h.jsonl'))
+    end
+
+    it 'ignores an empty CLAUDE_LIMIT_WATCH_FILE, which would mean the current directory' do
+      env('CLAUDE_LIMIT_WATCH_FILE' => '', 'XDG_STATE_HOME' => '/state')
+      expect(m.file).to eq('/state/claude-limit-watch/history.jsonl')
+    end
+
+    it 'makes a file it is given absolute' do
+      m.file = 'rel/h.jsonl'
+      expect(m.file).to eq(File.join(Dir.pwd, 'rel/h.jsonl'))
+    end
+
+    it 'expands ~ in XDG_STATE_HOME' do
+      env('CLAUDE_LIMIT_WATCH_FILE' => nil, 'XDG_STATE_HOME' => '~/state')
+      expect(m.file).to eq(File.join(Dir.home, 'state/claude-limit-watch/history.jsonl'))
+    end
+
     it 'is in the XDG state directory otherwise' do
       env('CLAUDE_LIMIT_WATCH_FILE' => nil, 'XDG_STATE_HOME' => '/state')
       expect(m.file).to eq('/state/claude-limit-watch/history.jsonl')

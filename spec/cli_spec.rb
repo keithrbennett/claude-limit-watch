@@ -26,6 +26,95 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     expect(ClaudeLimitWatch::Format.utc).to be(false)
   end
 
+  describe '--file' do
+    let(:history) { ClaudeLimitWatch::History }
+
+    it 'uses the history file it names, for any command' do
+      expect(history).to receive(:file=).with('/x/h.jsonl')
+      expect(ClaudeLimitWatch::Recorder).to receive(:stop)
+      m.main(%w[stop --file /x/h.jsonl])
+    end
+
+    it 'takes --file=PATH too, before the command' do
+      expect(history).to receive(:file=).with('/x/h.jsonl')
+      expect(ClaudeLimitWatch::Recorder).to receive(:run).with(5.0)
+      m.main(%w[--file=/x/h.jsonl record])
+    end
+
+    # The history file --once would show, with the real History.file, as at
+    # startup (nothing has read it yet). env: CLAUDE_LIMIT_WATCH_FILE.
+    def file_used(args, env: nil)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('CLAUDE_LIMIT_WATCH_FILE').and_return(env)
+      used = nil
+      allow(ClaudeLimitWatch::Panel).to receive(:run_once) { used = history.file }
+      history.file = nil
+      ClaudeLimitWatch::CLI.main(args)
+      used
+    ensure
+      history.file = SPEC_HISTORY_FILE
+    end
+
+    it 'makes a relative path absolute, so it means the same file from any directory' do
+      expect(file_used(%w[--once --file h.jsonl])).to eq(File.join(Dir.pwd, 'h.jsonl'))
+    end
+
+    it 'expands ~, which the shell leaves alone after =' do
+      expect(file_used(%w[--once --file=~/h.jsonl])).to eq(File.join(Dir.home, 'h.jsonl'))
+    end
+
+    it 'takes precedence over CLAUDE_LIMIT_WATCH_FILE' do
+      expect(file_used(%w[--once --file /x/h.jsonl], env: '/env/h.jsonl')).to eq('/x/h.jsonl')
+    end
+
+    it 'takes a path starting with - after =' do
+      expect(file_used(%w[--once --file=-x])).to eq(File.join(Dir.pwd, '-x'))
+    end
+
+    it "says so, without a backtrace, for a path it can't expand" do
+      expect do
+        expect { file_used(%w[--once --file=~nosuchuser/h.jsonl]) }
+          .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+      end.to output("claude-limit-watch: can't use --file ~nosuchuser/h.jsonl: user nosuchuser doesn't exist\n")
+        .to_stderr
+    end
+
+    it "says so for CLAUDE_LIMIT_WATCH_FILE it can't expand, before any command" do
+      expect(ClaudeLimitWatch::Panel).not_to receive(:run_once)
+      expect do
+        expect { file_used(%w[--once], env: '~nosuchuser/h.jsonl') }
+          .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+      end.to output(/\Aclaude-limit-watch: can't use the history file from CLAUDE_LIMIT_WATCH_FILE .*nosuchuser/)
+        .to_stderr
+    end
+
+    it 'shows the usage, not a --file error, for a missing path with CLAUDE_LIMIT_WATCH_FILE unexpandable' do
+      expect do
+        expect { file_used(%w[--once --file], env: '~nosuchuser/h.jsonl') }
+          .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+      end.to output(%r{\AUsage:.*append\s+each reading to ~nosuchuser/h\.jsonl\.}m).to_stderr
+    end
+
+    ['--help', '--version'].each do |arg|
+      it "still takes #{arg} with CLAUDE_LIMIT_WATCH_FILE unexpandable" do
+        expect { file_used([arg], env: '~nosuchuser/h.jsonl') }.to output(/\A(Usage:|claude-limit-watch \d)/).to_stdout
+      end
+    end
+
+    ['--file', '--file=', '--file --once', '--file a --file b', '--file=a --file=b --help'].each do |args|
+      it "rejects a missing or repeated path: #{args}" do
+        expect(history).not_to receive(:file=)
+        expect do
+          expect { m.main(args.split) }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+        end.to output(/\AUsage:/).to_stderr
+      end
+    end
+
+    it 'is in the help' do
+      expect { m.main(['--help']) }.to output(/Every command also takes:\n  --file PATH: the history file/).to_stdout
+    end
+  end
+
   it 'rejects --utc for stop, which shows no times' do
     expect(ClaudeLimitWatch::Recorder).not_to receive(:stop)
     expect do

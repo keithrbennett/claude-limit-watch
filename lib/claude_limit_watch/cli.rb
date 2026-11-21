@@ -3,6 +3,7 @@
 module ClaudeLimitWatch
   # The command line.
   module CLI
+    include Format
     extend self
 
     def usage
@@ -10,11 +11,11 @@ module ClaudeLimitWatch
         Usage:
           claude-limit-watch record [interval-minutes] [--utc]
               Check usage every N minutes (default #{DEFAULT_INTERVAL_MIN}; #{MIN_INTERVAL_MIN} or more) and append
-              each reading to #{History.file}.
+              each reading to #{shown_file}.
               --utc: show times in UTC instead of local time.
           claude-limit-watch stop
-              Stop the recorder for this history file. If the recorder was started
-              with CLAUDE_LIMIT_WATCH_FILE set, set it to the same value here.
+              Stop the recorder for this history file: for a recorder started
+              with --file or CLAUDE_LIMIT_WATCH_FILE, give the same file here.
           claude-limit-watch [view] [rate-window-minutes]
                              [--lines] [--once] [--no-record] [--utc]
               Show the readings, first starting the recorder in the background if it
@@ -31,17 +32,31 @@ module ClaudeLimitWatch
           claude-limit-watch --version | -v
               Show the version.
 
+        Every command also takes:
+          --file PATH: the history file to use (default: $CLAUDE_LIMIT_WATCH_FILE
+                       if set, or #{home_relative(History.default_file)}).
+
         #{VERSION_LINE}
       TEXT
     end
 
     def main(argv = ARGV)
       args = argv.dup
+      file_option(args)
       if (args & %w[--help -h]).any?
         puts usage
       elsif (args & %w[--version -v]).any?
         puts "claude-limit-watch #{VERSION}"
-      elsif args.first == 'record'
+      else
+        check_file
+        command(args)
+      end
+    end
+
+    private
+
+    def command(args)
+      if args.first == 'record'
         args.shift
         utc_option(args)
         minutes = number_arg(args[0], DEFAULT_INTERVAL_MIN, MIN_INTERVAL_MIN)
@@ -55,7 +70,22 @@ module ClaudeLimitWatch
       end
     end
 
-    private
+    # Reports a history file path that can't be expanded (~nosuchuser) now,
+    # not partway through a command.
+    def check_file
+      History.file
+    rescue ArgumentError => e
+      abort "claude-limit-watch: can't use the history file from CLAUDE_LIMIT_WATCH_FILE or XDG_STATE_HOME: " \
+            "#{e.message}"
+    end
+
+    # The history file for the help, with ~ for the home directory; as given,
+    # if it can't be expanded, so the help still shows.
+    def shown_file
+      home_relative(History.file)
+    rescue ArgumentError
+      History.env_file || History.default_file
+    end
 
     def view(args)
       args.shift if args.first == 'view'
@@ -76,6 +106,24 @@ module ClaudeLimitWatch
       else
         Recorder.ensure_running if record
         Panel.run(rate_window, record: record)
+      end
+    end
+
+    # Takes --file PATH (or --file=PATH) out of the arguments, and uses that
+    # history file.
+    def file_option(args)
+      file_arg = ->(a) { a == '--file' || a.start_with?('--file=') }
+      i = args.index(&file_arg)
+      return unless i
+
+      arg = args.delete_at(i)
+      # A separate path can't look like an option (--file --once); with = it can.
+      path = arg == '--file' ? args.delete_at(i) : arg.sub('--file=', '')
+      usage_error if path.nil? || path.empty? || (arg == '--file' && path.start_with?('-')) || args.any?(&file_arg)
+      begin
+        History.file = path
+      rescue ArgumentError => e
+        abort "claude-limit-watch: can't use --file #{path}: #{e.message}"
       end
     end
 
