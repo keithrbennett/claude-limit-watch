@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Pre-commit hook: RuboCop + RSpec before committing.
+# It checks the working tree, not just what's staged.
+# Bypass it once with: git commit --no-verify
+
+run_step() {
+  local label="$1"
+  shift
+  echo "Running ${label}..."
+  "$@"
+  echo "✅ ${label} passed."
+}
+
+if ! command -v bundle >/dev/null 2>&1; then
+  echo "❌ pre-commit: 'bundle' is not on PATH (is git running outside your Ruby setup?)." >&2
+  echo "   Fix PATH, or skip the checks once with: git commit --no-verify" >&2
+  exit 1
+fi
+
+# The Gemfile installs RuboCop only on Ruby 2.7 or later; CI runs it on 4.0.
+if bundle exec rubocop --version >/dev/null 2>&1; then
+  run_step "RuboCop" bundle exec rubocop
+else
+  echo "⚠️  Skipping RuboCop: it isn't installed (it needs Ruby 2.7 or later)."
+fi
+run_step "unit tests" bundle exec rspec
+
+echo "✅ All checks passed. Proceeding with commit."

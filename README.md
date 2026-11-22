@@ -258,10 +258,20 @@ muted text color. Colors are off when `NO_COLOR` is set.
 ## Development
 
     bundle install
-    bundle exec rake        # runs the specs (RSpec)
+    bundle exec rake          # runs the specs (RSpec)
+    bundle exec rake rubocop  # checks the style (needs Ruby 2.7 or later)
+    bin/setup-hooks           # optional: run both before each commit
 
-CI runs the specs on Ruby 2.6 through 4.0, on Linux and macOS
-(`.github/workflows/ci.yml`).
+`bin/setup-hooks` points git at the tracked `hooks/` directory
+(`core.hooksPath`), so the hooks are always the committed versions. That
+setting replaces any global hooks path and any hooks in `.git/hooks`, for
+this repository only. The hook checks the working tree, not just what's
+staged, and skips RuboCop on Ruby 2.6. Skip the hook for one commit with
+`git commit --no-verify`; turn it off with
+`git config --unset core.hooksPath`.
+
+CI runs the specs on Ruby 2.6 through 4.0, on Linux and macOS, and
+RuboCop in its own job on Ruby 4.0 (`.github/workflows/ci.yml`).
 
 `ruby script/demo_history.rb` writes a made-up history for screenshots;
 see the comment at its top.
