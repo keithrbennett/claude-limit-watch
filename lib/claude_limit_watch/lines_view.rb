@@ -12,7 +12,7 @@ module ClaudeLimitWatch
 
     def header(rate_window)
       ['Time ', 'Level ', 'Window      ', 'Ends ', 'Used', "#{num(rate_window)}m Burn Rate".ljust(RATE_COL),
-       ' Pace', 'Outlook'].join(' | ')
+        ' Pace', 'Outlook'].join(' | ')
     end
 
     # One reading's line, from its projection (Projection.project).
@@ -39,7 +39,7 @@ module ClaudeLimitWatch
       label = { ok: 'OK    ', projected: 'WARN  ', urgent: 'URGENT' }[p[:level]]
       pace = p[:pace]&.finite? ? format('%.1fx', p[:pace]) : 'n/a'
       [clock(now), label, "#{hm(p[:elapsed_min])} of 5:00", clock(p[:resets]),
-       format('%3d%%', p[:util].round), rate_txt.ljust(RATE_COL), pace.rjust(5), outlook].join(' | ')
+        format('%3d%%', p[:util].round), rate_txt.ljust(RATE_COL), pace.rjust(5), outlook].join(' | ')
     end
 
     # The warning that readings have stopped coming in. pid: the running
@@ -54,17 +54,20 @@ module ClaudeLimitWatch
     def intro(rate_window, pid, recorder_message)
       keeps = pid ? ' (the recorder keeps running)' : ''
       [paint(recorder_message, GRAY),
-       paint("Claude 5-hour limit, from #{History.file}; burn rate over the last " \
-             "#{num(rate_window)}m.#{zone_note} Ctrl-C to quit#{keeps}.", GRAY),
-       paint(VERSION_LINE, GRAY),
-       paint(header(rate_window), GRAY)]
+        paint("Claude 5-hour limit, from #{History.file}; burn rate over the last " \
+              "#{num(rate_window)}m.#{zone_note} Ctrl-C to quit#{keeps}.", GRAY),
+        paint(VERSION_LINE, GRAY),
+        paint(header(rate_window), GRAY)]
     end
 
     # Prints a line per reading as they come in, until Ctrl-C. pid and
     # recorder_message: as for intro. record: whether this viewer started the
     # recorder (false with --no-record).
     def run(rate_window, pid, recorder_message, record: true)
-      trap('INT') { puts; exit 0 }
+      trap('INT') do
+        puts
+        exit 0
+      end
       puts intro(rate_window, pid, recorder_message)
 
       cache = History::Cache.new
@@ -77,8 +80,12 @@ module ClaudeLimitWatch
           # Start with the readings in the current window (or nothing before now).
           latest = records.reject { |r| r[:error] }.last
           first = latest && latest[:resets] &&
-                  records.find { |r| r[:resets] && (r[:resets] - latest[:resets]).abs < 60 }
-          shown_t = first ? first[:t] - 1 : (records.last ? records.last[:t] : Time.at(0))
+            records.find { |r| r[:resets] && (r[:resets] - latest[:resets]).abs < 60 }
+          shown_t = if first
+            first[:t] - 1
+          else
+            (records.last ? records.last[:t] : Time.at(0))
+          end
         end
         records.each_with_index do |rec, i|
           next unless rec[:t] > shown_t

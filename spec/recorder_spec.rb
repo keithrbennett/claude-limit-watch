@@ -3,7 +3,7 @@
 # Finding, starting and stopping the recorder. Process.spawn and Process.kill
 # are stubbed: no real recorder is started or signalled.
 RSpec.describe ClaudeLimitWatch::Recorder do
-  m = described_class
+  let(:m) { described_class }
 
   before { FileUtils.rm_f(ClaudeLimitWatch::History.lock_file) }
 
@@ -49,7 +49,8 @@ RSpec.describe ClaudeLimitWatch::Recorder do
         expect do
           expect { m.stop }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
         end.to output(/\ASomething holds .* but isn't a recorder; not stopping anything/).to_stderr
-        expect(m.status).to eq([nil, "Something holds #{ClaudeLimitWatch::History.lock_file} but isn't a recorder."])
+        expect(m.status)
+          .to eq([nil, "Something holds #{ClaudeLimitWatch::History.lock_file} but isn't a recorder."])
       end
     end
 
@@ -72,18 +73,18 @@ RSpec.describe ClaudeLimitWatch::Recorder do
 
     it 'finds none, and starts one, if the lock is let go during the wait' do
       allow(m).to receive(:lock_held?).and_return(true, false)
-      allow(m).to receive(:pid).and_return(nil)
       allow(m).to receive(:sleep)
       expect(m.find).to eq([nil, false])
-      expect(m).to receive(:start).and_return(999)
+      allow(m).to receive_messages(pid: nil, start: 999)
       expect(m.ensure_running.first).to eq(999)
+      expect(m).to have_received(:start).once
     end
   end
 
   it "doesn't return the pid of a recorder that exited while it was read" do
     File.write(ClaudeLimitWatch::History.lock_file, '4321')
-    # Held at the first check (flock fails), then free (it succeeds; unlock).
-    allow_any_instance_of(File).to receive(:flock).and_return(false, 0, 0)
+    # Held at the first check, then free.
+    allow(m).to receive(:held?).and_return(true, false)
     expect(m.pid).to be_nil
   end
 
@@ -149,14 +150,14 @@ RSpec.describe ClaudeLimitWatch::Recorder do
 
   it 'starts the recorder in the background, on this history file' do
     history = ClaudeLimitWatch::History
-    expect(Process).to receive(:spawn)
-      .with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file', history.file,
-            in: File::NULL, out: [history.log_file, 'a'], err: [:child, :out], pgroup: true)
-      .and_return(999)
+    allow(Process).to receive(:spawn).and_return(999)
     expect(Process).to receive(:detach).with(999)
     allow(m).to receive(:sleep)
     allow(m).to receive(:pid).and_return(nil, 999)
     expect(m.start).to eq(999)
+    expect(Process).to have_received(:spawn).once
+      .with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file', history.file,
+        in: File::NULL, out: [history.log_file, 'a'], err: %i[child out], pgroup: true)
   end
 
   describe '.status' do
@@ -173,21 +174,22 @@ RSpec.describe ClaudeLimitWatch::Recorder do
 
   it 'starts the recorder with --utc when the viewer has it' do
     ClaudeLimitWatch::Format.utc = true
-    expect(Process).to receive(:spawn).with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record',
-                                            '--file', SPEC_HISTORY_FILE, '--utc', Hash).and_return(999)
-    allow(Process).to receive(:detach)
+    allow(Process).to receive_messages(spawn: 999, detach: nil)
     allow(m).to receive(:pid).and_return(999)
     expect(m.start).to eq(999)
+    expect(Process).to have_received(:spawn).once
+      .with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file', SPEC_HISTORY_FILE,
+        '--utc', Hash)
   end
 
   it 'starts the recorder on a history file given with --file' do
     allow(ClaudeLimitWatch::History).to receive(:file).and_return('/custom/h.jsonl')
     allow(FileUtils).to receive(:mkdir_p)
-    expect(Process).to receive(:spawn).with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record',
-                                            '--file', '/custom/h.jsonl', Hash).and_return(999)
-    allow(Process).to receive(:detach)
+    allow(Process).to receive_messages(spawn: 999, detach: nil)
     allow(m).to receive(:pid).and_return(999)
     expect(m.start).to eq(999)
+    expect(Process).to have_received(:spawn).once
+      .with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file', '/custom/h.jsonl', Hash)
   end
 
   describe '.stop_command' do
@@ -203,7 +205,8 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     end
 
     it 'quotes the history file for the shell' do
-      allow(ClaudeLimitWatch::History).to receive_messages(file: '/my dir/h.jsonl', default_file: '/elsewhere/h.jsonl')
+      allow(ClaudeLimitWatch::History)
+        .to receive_messages(file: '/my dir/h.jsonl', default_file: '/elsewhere/h.jsonl')
       expect(m.stop_command(4321)).to eq('claude-limit-watch stop --file /my\\ dir/h.jsonl')
     end
 
@@ -219,7 +222,8 @@ RSpec.describe ClaudeLimitWatch::Recorder do
 
     it "gives --file when XDG_STATE_HOME can't be expanded, which a bare stop couldn't use" do
       allow(ClaudeLimitWatch::History).to receive(:default_file).and_return('~nosuchuser/state/h.jsonl')
-      expect(m.stop_command(4321)).to eq("claude-limit-watch stop --file #{Shellwords.escape(SPEC_HISTORY_FILE)}")
+      file = Shellwords.escape(SPEC_HISTORY_FILE)
+      expect(m.stop_command(4321)).to eq("claude-limit-watch stop --file #{file}")
     end
   end
 
@@ -260,7 +264,8 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     allow(m).to receive(:sleep)
     expect(m).not_to receive(:start)
     expect(m.ensure_running)
-      .to eq([nil, "Something holds #{ClaudeLimitWatch::History.lock_file} but isn't a recorder; not starting one"])
+      .to eq([nil, "Something holds #{ClaudeLimitWatch::History.lock_file} " \
+                   "but isn't a recorder; not starting one"])
   end
 
   it 'tells whether something holds the lock' do

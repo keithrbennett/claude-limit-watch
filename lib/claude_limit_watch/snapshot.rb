@@ -27,7 +27,7 @@ module ClaudeLimitWatch
       prior = window[0...-1].map { |r| { t: r[:t], util: r[:util] } }
       args = [prior, latest[:t], latest[:util], latest[:resets]]
       st.merge(proj: Projection.project(*args, rate_window: rate_window),
-               table: Projection.projection_rows(*args, rate_window: rate_window))
+        table: Projection.projection_rows(*args, rate_window: rate_window))
     end
   end
 end

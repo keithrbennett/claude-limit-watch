@@ -4,7 +4,7 @@ require 'json'
 
 # The history file.
 RSpec.describe ClaudeLimitWatch::History do
-  m = described_class
+  let(:m) { described_class }
 
   before { FileUtils.rm_f(m.file) } # spec_helper makes sure it's the spec file
 
@@ -39,7 +39,7 @@ RSpec.describe ClaudeLimitWatch::History do
       expect(m.file).to eq('/state/claude-limit-watch/history.jsonl')
     end
 
-    ['unset', 'empty'].each do |how|
+    %w[unset empty].each do |how|
       it "defaults to ~/.local/state with XDG_STATE_HOME #{how}" do
         env('XDG_STATE_HOME' => how == 'empty' ? '' : nil)
         expect(m.file).to eq(File.join(Dir.home, '.local/state/claude-limit-watch/history.jsonl'))
@@ -50,10 +50,10 @@ RSpec.describe ClaudeLimitWatch::History do
   describe '.append and .read' do
     it 'round-trip readings and failed checks' do
       m.append('t' => NOW.iso8601, 'interval_min' => 5.0, 'util' => 42.0,
-               'resets_at' => (NOW + 600).utc.iso8601)
+        'resets_at' => (NOW + 600).utc.iso8601)
       m.append('t' => (NOW + 300).iso8601, 'interval_min' => 5.0, 'error' => 'token expired')
       expect(m.read).to eq([{ t: NOW, interval: 5.0, util: 42.0, resets: NOW + 600 },
-                            { t: NOW + 300, interval: 5.0, error: 'token expired' }])
+        { t: NOW + 300, interval: 5.0, error: 'token expired' }])
     end
 
     it 'skips lines it cannot parse' do
@@ -77,7 +77,8 @@ RSpec.describe ClaudeLimitWatch::History do
     end
 
     it 'drops lines it cannot parse, and leaves no temporary file' do
-      File.write(m.file, "#{JSON.generate('t' => Time.now.iso8601, 'interval_min' => 5, 'util' => 1)}\nnot json\n")
+      good = JSON.generate('t' => Time.now.iso8601, 'interval_min' => 5, 'util' => 1)
+      File.write(m.file, "#{good}\nnot json\n")
       m.prune
       expect(File.readlines(m.file).size).to eq(1)
       expect(File.exist?("#{m.file}.tmp")).to be(false)

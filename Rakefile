@@ -12,4 +12,16 @@ else
   RSpec::Core::RakeTask.new(:spec)
 end
 
+begin
+  require 'rubocop/rake_task'
+rescue LoadError
+  # No RuboCop (it needs Ruby 2.7 or later): the other tasks still work.
+  desc 'Check the style (needs RuboCop, on Ruby 2.7 or later: bundle install)'
+  task(:rubocop) { abort "Can't load RuboCop. On Ruby 2.7 or later, run: bundle install" }
+else
+  RuboCop::RakeTask.new
+end
+
+# Not RuboCop: it can't run on Ruby 2.6, which CI also tests. CI runs it
+# separately.
 task default: :spec

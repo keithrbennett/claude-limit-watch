@@ -53,9 +53,7 @@ module ClaudeLimitWatch
       end
     end
 
-    private
-
-    def command(args)
+    private def command(args)
       if args.first == 'record'
         args.shift
         utc_option(args)
@@ -72,21 +70,22 @@ module ClaudeLimitWatch
 
     # Reports a history file path that can't be expanded (~nosuchuser) now,
     # not partway through a command.
-    def check_file
+    private def check_file
       History.file
     rescue ArgumentError => e
-      abort "claude-limit-watch: can't use the default history file (check HOME and XDG_STATE_HOME): #{e.message}"
+      abort "claude-limit-watch: can't use the default history file (check HOME and XDG_STATE_HOME): " \
+            "#{e.message}"
     end
 
     # The history file for the help, with ~ for the home directory; as given,
     # if it can't be expanded, so the help still shows.
-    def shown_file
+    private def shown_file
       home_relative(History.file)
     rescue ArgumentError
       History.default_file
     end
 
-    def view(args)
+    private def view(args)
       args.shift if args.first == 'view'
       utc_option(args)
       lines_mode = !args.delete('--lines').nil?
@@ -97,7 +96,10 @@ module ClaudeLimitWatch
       return Panel.run_once(rate_window) if once
 
       # Ctrl-C while the recorder starts (up to 2 seconds) exits quietly.
-      trap('INT') { puts; exit 0 }
+      trap('INT') do
+        puts
+        exit 0
+      end
       # The viewer starts the recorder, unless told not to.
       if lines_mode || !$stdout.tty?
         pid, message = record ? Recorder.ensure_running : Recorder.status
@@ -110,7 +112,7 @@ module ClaudeLimitWatch
 
     # Takes --file PATH (or --file=PATH) out of the arguments, and uses that
     # history file.
-    def file_option(args)
+    private def file_option(args)
       file_arg = ->(a) { a == '--file' || a.start_with?('--file=') }
       i = args.index(&file_arg)
       return unless i
@@ -118,7 +120,8 @@ module ClaudeLimitWatch
       arg = args.delete_at(i)
       # A separate path can't look like an option (--file --once); with = it can.
       path = arg == '--file' ? args.delete_at(i) : arg.sub('--file=', '')
-      usage_error if path.nil? || path.empty? || (arg == '--file' && path.start_with?('-')) || args.any?(&file_arg)
+      looks_like_option = arg == '--file' && path&.start_with?('-')
+      usage_error if path.nil? || path.empty? || looks_like_option || args.any?(&file_arg)
       begin
         History.file = path
       rescue ArgumentError => e
@@ -127,20 +130,20 @@ module ClaudeLimitWatch
     end
 
     # Takes --utc out of the arguments; times are in UTC if it was there.
-    def utc_option(args)
+    private def utc_option(args)
       Format.utc = !args.delete('--utc').nil?
     end
 
     # The argument as a number, or the default if it's missing; nil if it
     # isn't a number at least `min`.
-    def number_arg(arg, default, min)
+    private def number_arg(arg, default, min)
       n = Float(arg || default)
       n.finite? && n >= min ? n : nil
     rescue ArgumentError, TypeError
       nil
     end
 
-    def usage_error
+    private def usage_error
       warn usage
       exit 1
     end

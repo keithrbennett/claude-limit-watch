@@ -22,7 +22,7 @@ module ClaudeLimitWatch
       raw =
         if macos?
           out, status = Open3.capture2('security', 'find-generic-password',
-                                       '-s', 'Claude Code-credentials', '-w')
+            '-s', 'Claude Code-credentials', '-w')
           status.success? ? out : nil
         else
           path = File.join(Dir.home, '.claude', '.credentials.json')
@@ -42,7 +42,7 @@ module ClaudeLimitWatch
       req['Accept'] = 'application/json'
       req['User-Agent'] = 'claude-limit-watch'
       res = Net::HTTP.start(URL.host, URL.port, use_ssl: true,
-                            open_timeout: 10, read_timeout: 10) { |http| http.request(req) }
+        open_timeout: 10, read_timeout: 10) { |http| http.request(req) }
       if res.code == '401'
         return 'token expired (refreshes when a Claude Code session next runs)'
       end
@@ -54,7 +54,7 @@ module ClaudeLimitWatch
 
       resets = window['resets_at'] ? Time.parse(window['resets_at']) : nil
       [window['utilization'].to_f, resets]
-    rescue StandardError => e
+    rescue => e
       "#{e.class}: #{e.message}"
     end
   end

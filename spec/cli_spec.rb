@@ -2,7 +2,7 @@
 
 # The command line.
 RSpec.describe ClaudeLimitWatch::CLI, '.main' do
-  m = described_class
+  let(:m) { described_class }
 
   ['--help', '-h', 'view --help', 'record -h', '--bogus --help'].each do |args|
     it "prints the help to stdout for: #{args}" do
@@ -11,7 +11,8 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
   end
 
   it 'lists the view options in the help' do
-    expect { m.main(['--help']) }.to output(/--lines.*--once.*--no-record: don't start the recorder/m).to_stdout
+    expect { m.main(['--help']) }
+      .to output(/--lines.*--once.*--no-record: don't start the recorder/m).to_stdout
   end
 
   it 'lists --utc in the help' do
@@ -75,8 +76,8 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
       expect do
         expect { file_used(%w[--once --file=~nosuchuser/h.jsonl]) }
           .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
-      end.to output("claude-limit-watch: can't use --file ~nosuchuser/h.jsonl: user nosuchuser doesn't exist\n")
-        .to_stderr
+      end.to output("claude-limit-watch: can't use --file ~nosuchuser/h.jsonl: " \
+                    "user nosuchuser doesn't exist\n").to_stderr
     end
 
     it "says so for an XDG_STATE_HOME it can't expand, before any command" do
@@ -84,28 +85,30 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
       expect do
         expect { file_used(%w[--once], xdg: '~nosuchuser/state') }
           .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
-      end.to output("claude-limit-watch: can't use the default history file (check HOME and XDG_STATE_HOME): " \
-                    "user nosuchuser doesn't exist\n").to_stderr
+      end.to output("claude-limit-watch: can't use the default history file " \
+                    "(check HOME and XDG_STATE_HOME): user nosuchuser doesn't exist\n").to_stderr
     end
 
     it "says so for a HOME it can't expand, with XDG_STATE_HOME empty" do
       allow(Dir).to receive(:home).and_return('~nosuchuser')
       expect do
         expect { file_used(%w[--once], xdg: '') }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
-      end.to output(/can't use the default history file \(check HOME and XDG_STATE_HOME\): .*nosuchuser/).to_stderr
+      end.to output(/can't use the default history file \(check HOME and XDG_STATE_HOME\): .*nosuchuser/)
+        .to_stderr
     end
 
-    it "shows the usage, not a --file error, for a missing path with XDG_STATE_HOME unexpandable" do
+    it 'shows the usage, not a --file error, for a missing path with XDG_STATE_HOME unexpandable' do
+      file = Regexp.escape('~nosuchuser/state/claude-limit-watch/history.jsonl')
       expect do
         expect { file_used(%w[--once --file], xdg: '~nosuchuser/state') }
           .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
-      end.to output(%r{\AUsage:.*append\s+each reading to ~nosuchuser/state/claude-limit-watch/history\.jsonl\.}m)
-        .to_stderr
+      end.to output(/\AUsage:.*append\s+each reading to #{file}\./m).to_stderr
     end
 
     ['--help', '--version'].each do |arg|
       it "still takes #{arg} with XDG_STATE_HOME unexpandable" do
-        expect { file_used([arg], xdg: '~nosuchuser/state') }.to output(/\A(Usage:|claude-limit-watch \d)/).to_stdout
+        expect { file_used([arg], xdg: '~nosuchuser/state') }
+          .to output(/\A(Usage:|claude-limit-watch \d)/).to_stdout
       end
     end
 
@@ -119,7 +122,8 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     end
 
     it 'is in the help' do
-      expect { m.main(['--help']) }.to output(/Every command also takes:\n  --file PATH: the history file/).to_stdout
+      expect { m.main(['--help']) }
+        .to output(/Every command also takes:\n  --file PATH: the history file/).to_stdout
     end
   end
 
@@ -210,7 +214,8 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     end
   end
 
-  ['bogus', 'record 0.1', 'record 5 6', 'stop now', '30 45', 'record --no-record', 'stop --no-record'].each do |args|
+  ['bogus', 'record 0.1', 'record 5 6', 'stop now', '30 45',
+    'record --no-record', 'stop --no-record'].each do |args|
     it "rejects: #{args}" do
       expect do
         expect { m.main(args.split) }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }

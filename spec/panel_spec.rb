@@ -2,9 +2,9 @@
 
 # The full-screen panel's layout.
 RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
-  m = described_class
-  banner_text = 'C L A U D E'
-  one_line_title = /\A Claude 5-hour limit/
+  let(:m) { described_class }
+  let(:banner_text) { 'C L A U D E' }
+  let(:one_line_title) { /\A Claude 5-hour limit/ }
 
   # The demo scenario, then a failed check, then no readings for 15 minutes:
   # with an extra rate-window row, the tallest panel there is.
@@ -15,17 +15,17 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
   let(:states) do
     idle = { t: NOW, interval: 5.0, util: 3.0, resets: NOW - 60 }
     {
-      'normal' => [window_records, NOW, 1234],
-      'no data' => [[], NOW, 1234],
-      'no data, no recorder' => [[], NOW, nil],
-      'only failed checks' => [[error_record(NOW)], NOW, 1234],
-      'idle' => [[idle], NOW, 1234],
-      'idle, then a failed check' => [[idle, error_record(NOW + 60)], NOW + 61, 1234],
-      'early in the window' => [window_records(elapsed: 20, knots: [[0, 0], [20, 5]]), NOW, 1234],
-      'at the limit' => [window_records(knots: [[0, 0], [200, 100]]), NOW, 1234],
-      'stale' => [window_records, NOW + 900, 1234],
-      'failed and stale' => [worst_records, worst_now, 1234],
-      'failed and stale, no recorder' => [worst_records, worst_now, nil]
+      'normal'                        => [window_records, NOW, 1234],
+      'no data'                       => [[], NOW, 1234],
+      'no data, no recorder'          => [[], NOW, nil],
+      'only failed checks'            => [[error_record(NOW)], NOW, 1234],
+      'idle'                          => [[idle], NOW, 1234],
+      'idle, then a failed check'     => [[idle, error_record(NOW + 60)], NOW + 61, 1234],
+      'early in the window'           => [window_records(elapsed: 20, knots: [[0, 0], [20, 5]]), NOW, 1234],
+      'at the limit'                  => [window_records(knots: [[0, 0], [200, 100]]), NOW, 1234],
+      'stale'                         => [window_records, NOW + 900, 1234],
+      'failed and stale'              => [worst_records, worst_now, 1234],
+      'failed and stale, no recorder' => [worst_records, worst_now, nil],
     }
   end
 
@@ -33,7 +33,8 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     lines = panel(window_records, NOW)
     expect(lines.size).to eq(23)
     expect(lines[1]).to include(banner_text)
-    expect(lines).to include(a_string_starting_with('  q to quit · stop the recorder with: claude-limit-watch stop '))
+    expect(lines)
+      .to include(a_string_starting_with('  q to quit · stop the recorder with: claude-limit-watch stop '))
     expect(lines[-2]).to eq("  #{ClaudeLimitWatch::VERSION_LINE}")
     expect(lines[-1]).to start_with('  Recorder running (pid 1234)')
   end
@@ -98,8 +99,8 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     st = ClaudeLimitWatch::Snapshot.build(worst_records, worst_now, rate_window: 30).merge(recorder_pid: 1234)
     lines = m.lines(st, worst_now)
     expect(lines).to include(a_string_starting_with("\e[38;5;220m  Last check failed"),
-                             a_string_starting_with("\e[38;5;220m  No new readings"),
-                             a_string_starting_with("\e[90m  q to quit"))
+      a_string_starting_with("\e[38;5;220m  No new readings"),
+      a_string_starting_with("\e[90m  q to quit"))
   end
 
   describe 'when readings stop' do
@@ -128,9 +129,10 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
 
     it 'says how to stop the recorder, by pid for another history file' do
-      expect(panel(window_records, NOW)).to include(a_string_starting_with('  q to quit · stop the recorder with: claude-limit-watch stop '))
+      hint = '  q to quit · stop the recorder with: '
+      expect(panel(window_records, NOW)).to include(a_string_starting_with("#{hint}claude-limit-watch stop "))
       allow(ClaudeLimitWatch::History).to receive(:default_file).and_return('/elsewhere/history.jsonl')
-      expect(panel(window_records, NOW)).to include(a_string_starting_with('  q to quit · stop the recorder with: kill 1234 '))
+      expect(panel(window_records, NOW)).to include(a_string_starting_with("#{hint}kill 1234 "))
     end
 
     it 'keeps --no-record when it drops the banner' do
@@ -153,8 +155,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       allow($stdin).to receive(:tty?).and_return(false) # no key reading, no stty
       allow(panel).to receive(:at_exit)
       allow(panel).to receive(:trap)
-      allow(panel).to receive(:term_width).and_return(120)
-      allow(panel).to receive(:term_height).and_return(nil)
+      allow(panel).to receive_messages(term_width: 120, term_height: nil)
       allow(ClaudeLimitWatch::History::Cache).to receive(:new).and_return(double(records: window_records))
       allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(nil)
       allow(Time).to receive(:now).and_return(NOW + 900)
@@ -165,7 +166,8 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
 
     it 'passes --no-record to the panel' do
-      expect(first_frame(record: true)).to include('  No new readings for 15m. Restart the viewer, or see recorder.log')
+      expect(first_frame(record: true))
+        .to include('  No new readings for 15m. Restart the viewer, or see recorder.log')
       expect(first_frame(record: false)).to include('  No new readings for 15m.')
     end
   end
@@ -218,7 +220,8 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
 
   describe 'times' do
     def times(lines)
-      [lines.grep(/last reading/).first[/(times in UTC · )?last reading \S+/], lines.grep(/\A +\d\d:\d\d +\d\d:\d\d\z/).first.split]
+      heading = lines.grep(/last reading/).first[/(times in UTC · )?last reading \S+/]
+      [heading, lines.grep(/\A +\d\d:\d\d +\d\d:\d\d\z/).first.split]
     end
 
     it 'shows local time' do
@@ -230,7 +233,8 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     it 'shows UTC with --utc, and says so' do
       ClaudeLimitWatch::Format.utc = true
       in_zone('Asia/Singapore') do
-        expect(times(panel(window_records, NOW))).to eq(['times in UTC · last reading 08:00', %w[04:40 09:40]])
+        expect(times(panel(window_records, NOW)))
+          .to eq(['times in UTC · last reading 08:00', %w[04:40 09:40]])
         expect(panel(window_records, NOW).grep(/limit at 0\d:\d\d/)).not_to be_empty
       end
     end

@@ -2,7 +2,7 @@
 
 # The --lines output.
 RSpec.describe ClaudeLimitWatch::LinesView do
-  m = described_class
+  let(:m) { described_class }
 
   describe '.format_line' do
     def fields(util, rate, reset_min)
@@ -13,7 +13,8 @@ RSpec.describe ClaudeLimitWatch::LinesView do
 
     it 'formats an OK line' do
       expect(fields(50.0, 0.2, 100))
-        .to eq(['08:00', 'OK', '3:20 of 5:00', '09:40', '50%', '12.0%/h (avg 15.0)', '0.4x', '~30% left at reset'])
+        .to eq(['08:00', 'OK', '3:20 of 5:00', '09:40', '50%', '12.0%/h (avg 15.0)', '0.4x',
+          '~30% left at reset'])
     end
 
     it 'formats a WARN line' do
@@ -66,7 +67,8 @@ RSpec.describe ClaudeLimitWatch::LinesView do
     it 'starts with the recorder message, then says the recorder keeps running' do
       lines = intro(4321, 'Started the recorder')
       expect(lines[0]).to eq('Started the recorder')
-      expect(lines[1]).to end_with('burn rate over the last 45m. Ctrl-C to quit (the recorder keeps running).')
+      expect(lines[1])
+        .to end_with('burn rate over the last 45m. Ctrl-C to quit (the recorder keeps running).')
       expect(lines[2]).to eq(ClaudeLimitWatch::VERSION_LINE)
       expect(lines[3]).to start_with('Time  | Level')
     end

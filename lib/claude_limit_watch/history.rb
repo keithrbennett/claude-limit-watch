@@ -54,7 +54,7 @@ module ClaudeLimitWatch
       cutoff = Time.now - (KEEP_DAYS * 86_400)
       kept = File.readlines(file).select do |line|
         Time.parse(JSON.parse(line)['t']) >= cutoff
-      rescue StandardError
+      rescue
         false
       end
       tmp = "#{file}.tmp"
@@ -75,7 +75,7 @@ module ClaudeLimitWatch
         else
           rec.merge(util: h['util'].to_f, resets: h['resets_at'] && Time.parse(h['resets_at']))
         end
-      rescue StandardError
+      rescue
         nil
       end.compact
     end

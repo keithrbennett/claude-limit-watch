@@ -38,14 +38,14 @@ def write_history(file)
   lines = (INTERVAL..ELAPSED).step(INTERVAL).map do |min|
     t = now - ((ELAPSED - min) * 60)
     JSON.generate('t' => t.iso8601, 'interval_min' => INTERVAL.to_f, 'util' => util_at(min).to_f,
-                  'resets_at' => resets.utc.iso8601)
+      'resets_at' => resets.utc.iso8601)
   end
   tmp = "#{file}.tmp"
   File.write(tmp, lines.join("\n") + "\n")
   File.rename(tmp, file)
 end
 
-lock = File.open("#{file}.lock", File::RDWR | File::CREAT, 0o644)
+lock = File.open("#{file}.lock", File::RDWR | File::CREAT, 0o644) # rubocop:disable Style/FileOpen -- held until exit
 abort "Something else holds #{file}.lock; stop it first." unless lock.flock(File::LOCK_EX | File::LOCK_NB)
 lock.truncate(0)
 lock.write(Process.pid.to_s)

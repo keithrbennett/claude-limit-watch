@@ -1,0 +1,103 @@
+# .rubocop-shared.yml is a copy of cov-loupe's, so the projects share one
+# style and this repository stands alone. The first part of this file is
+# cov-loupe's .rubocop.yml, kept the same (except where noted) whether or not
+# a setting matters here yet; cov-loupe also inherits a .rubocop_todo.yml,
+# which this project doesn't need (it has no offenses to defer). This
+# project's own settings come after it.
+inherit_from:
+  - .rubocop-shared.yml
+
+AllCops:
+  # The code runs on Ruby 2.6 (macOS's system Ruby), although RuboCop itself
+  # needs 2.7 or later.
+  TargetRubyVersion: 2.6
+  Exclude:
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'coverage/**/*'
+    - 'bin/**/*'
+    - 'node_modules/**/*'
+    - 'screencast/**/*'
+    - 'spec/fixtures/**/*'
+    - 'untracked/**/*'
+    # This project's:
+    - 'pkg/**/*'
+    - 'agent-council-reports/**/*'
+
+Layout/CaseIndentation:
+  Enabled: false
+
+Layout/LineEndStringConcatenationIndentation:
+  Enabled: false
+
+RSpec/DescribeMethod:
+  Enabled: false
+
+RSpec/IndexedLet:
+  Enabled: false
+
+RSpec/Output:
+  Exclude:
+    - spec/spec_helper.rb
+
+RSpec/SpecFilePathFormat:
+  Enabled: false
+
+RSpec/VerifiedDoubleReference:
+  Enabled: false
+
+Style/AccessModifierDeclarations:
+  Enabled: true
+  EnforcedStyle: inline
+
+Style/DoubleNegation:
+  Enabled: false
+
+Style/EmptyStringInsideInterpolation:
+  Enabled: false
+
+Style/FetchEnvVar:
+  Enabled: false
+
+Style/FormatStringToken:
+  Enabled: false
+
+# cov-loupe also excludes two of its own files here, which don't exist in
+# this project.
+Style/KeywordParametersOrder:
+  Enabled: true
+
+Style/MultilineBlockChain:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
+
+Style/RedundantConstantBase:
+  Enabled: false
+
+Style/RedundantFormat:
+  Enabled: false
+
+Style/StderrPuts:
+  Enabled: false
+
+Style/StringConcatenation:
+  Enabled: false
+
+Style/TernaryParentheses:
+  Enabled: false
+
+# This project's own settings.
+
+# The modules are modules of functions with `extend self`, not
+# `module_function`: that way they can have private helpers, and include
+# Format and Term.
+Style/ModuleFunction:
+  Enabled: false
+
+# Short names for the values the panel's code passes around: st, a snapshot;
+# p, a projection; f, a file; tz, a time zone. The rest are RuboCop's defaults.
+Naming/MethodParameterName:
+  # 'on' is quoted: unquoted, YAML reads it as true.
+  AllowedNames: [as, at, by, cc, db, id, if, in, io, ip, of, 'on', os, pp, to, st, p, f, tz]

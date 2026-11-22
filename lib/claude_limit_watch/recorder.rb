@@ -16,7 +16,8 @@ module ClaudeLimitWatch
     # is running.
     def run(minutes)
       FileUtils.mkdir_p(File.dirname(History.file))
-      lock = File.open(History.lock_file, File::RDWR | File::CREAT, 0o644)
+      # Open, and locked, for as long as the recorder runs.
+      lock = File.open(History.lock_file, File::RDWR | File::CREAT, 0o644) # rubocop:disable Style/FileOpen
       unless lock.flock(File::LOCK_EX | File::LOCK_NB)
         warn "Another recorder is already running (pid #{File.read(History.lock_file).strip}). " \
              'Only one can run at a time.'
@@ -29,8 +30,8 @@ module ClaudeLimitWatch
       # that started the viewer doesn't stop a background recorder.
       %w[INT TERM].each { |sig| trap(sig) { exit 0 } }
 
-      puts "Recording the Claude 5-hour usage every #{num(minutes)}m to #{History.file} (pid #{Process.pid}).#{zone_note} " \
-           "Stop with Ctrl-C or: #{stop_command(Process.pid)}"
+      puts "Recording the Claude 5-hour usage every #{num(minutes)}m to #{History.file} " \
+           "(pid #{Process.pid}).#{zone_note} Stop with Ctrl-C or: #{stop_command(Process.pid)}"
       last_prune = nil
       loop do
         if last_prune.nil? || Time.now - last_prune > 3600
@@ -55,8 +56,9 @@ module ClaudeLimitWatch
       else
         util, resets = reading
         History.append('t' => now.iso8601, 'interval_min' => minutes, 'util' => util,
-                       'resets_at' => resets&.utc&.iso8601)
-        puts "#{stamp}  #{format('%3d%%', util.round)}  #{resets ? "window ends #{clock(resets)}" : 'no active window'}"
+          'resets_at' => resets&.utc&.iso8601)
+        window = resets ? "window ends #{clock(resets)}" : 'no active window'
+        puts "#{stamp}  #{format('%3d%%', util.round)}  #{window}"
       end
     end
 
@@ -104,8 +106,8 @@ module ClaudeLimitWatch
       log = History.log_file
       FileUtils.mkdir_p(File.dirname(log))
       child = Process.spawn('nohup', RbConfig.ruby, EXECUTABLE, 'record', '--file', History.file,
-                            *('--utc' if Format.utc),
-                            in: File::NULL, out: [log, 'a'], err: [:child, :out], pgroup: true)
+        *('--utc' if Format.utc),
+        in: File::NULL, out: [log, 'a'], err: %i[child out], pgroup: true)
       Process.detach(child)
       wait_for_pid
     end
@@ -204,16 +206,14 @@ module ClaudeLimitWatch
       exit 1
     end
 
-    private
-
-    def bare_stop_works?
+    private def bare_stop_works?
       History.file == File.expand_path(History.default_file)
     rescue ArgumentError # HOME or XDG_STATE_HOME with ~nosuchuser: a bare stop couldn't use it either
       false
     end
 
     # Whether something else holds the lock on f.
-    def held?(f)
+    private def held?(f)
       return true unless f.flock(File::LOCK_EX | File::LOCK_NB)
 
       f.flock(File::LOCK_UN)

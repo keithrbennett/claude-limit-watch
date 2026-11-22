@@ -41,7 +41,7 @@ module ClaudeLimitWatch
     def term_size
       require 'io/console'
       IO.console&.winsize
-    rescue StandardError
+    rescue
       nil
     end
 

@@ -2,7 +2,7 @@
 
 # Rates, assessments and projections: the numbers behind both views.
 RSpec.describe ClaudeLimitWatch::Projection do
-  m = described_class
+  let(:m) { described_class }
 
   # Readings `minutes_ago` back, rising `per_min` points a minute to `util_now`.
   def rising(minutes_ago, util_now: 50.0, per_min: 0.2)
@@ -123,7 +123,7 @@ RSpec.describe ClaudeLimitWatch::Projection do
     def rows_for(records, rate_window: 30)
       last = records.last
       ClaudeLimitWatch::Projection.projection_rows(prior(records), last[:t], last[:util], last[:resets],
-                                                   rate_window: rate_window)
+        rate_window: rate_window)
     end
 
     it 'waits out the first minutes of the window' do
@@ -142,7 +142,8 @@ RSpec.describe ClaudeLimitWatch::Projection do
     end
 
     it 'adds the rate window once' do
-      expect(rows_for(window_records, rate_window: 45).map { |r| r[:label] }).to eq(%w[10m 30m 45m 1h 2h window])
+      labels = rows_for(window_records, rate_window: 45).map { |r| r[:label] }
+      expect(labels).to eq(%w[10m 30m 45m 1h 2h window])
       expect(rows_for(window_records, rate_window: 60).map { |r| r[:label] }).to eq(%w[10m 30m 1h 2h window])
     end
 

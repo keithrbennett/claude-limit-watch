@@ -2,7 +2,7 @@
 
 # Times and durations as text.
 RSpec.describe ClaudeLimitWatch::Format do
-  m = described_class
+  let(:m) { described_class }
 
   describe '.clock' do
     it 'shows local time, by default' do
@@ -24,7 +24,7 @@ RSpec.describe ClaudeLimitWatch::Format do
       expect(m.clock(NOW + 15, seconds: true)).to eq('08:00:15')
     end
 
-    it "shows a time from the history file in this zone, not the one it was recorded in" do
+    it 'shows a time from the history file in this zone, not the one it was recorded in' do
       recorded = Time.parse('2027-01-15T16:00:00+08:00')
       expect(m.clock(recorded)).to eq('08:00') # the specs' local time is UTC
       m.utc = true
