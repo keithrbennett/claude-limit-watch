@@ -98,9 +98,8 @@ module ClaudeLimitWatch
 
     # Starts `record` in the background with nohup, in its own process group so
     # Ctrl-C in the viewer's terminal doesn't reach it, recording to this
-    # process's history file (given with --file, which takes precedence over
-    # any CLAUDE_LIMIT_WATCH_FILE it inherits), with --utc if this process has
-    # it. Returns its pid (or nil if it didn't come up).
+    # process's history file (given with --file), with --utc if this process
+    # has it. Returns its pid (or nil if it didn't come up).
     def start
       log = History.log_file
       FileUtils.mkdir_p(File.dirname(log))
@@ -150,10 +149,9 @@ module ClaudeLimitWatch
     end
 
     # How to stop the recorder with this pid. `claude-limit-watch stop` finds
-    # the recorder by its history file, so it needs --file unless a bare
-    # `stop` means this file in any shell: it's the default, and
-    # CLAUDE_LIMIT_WATCH_FILE doesn't name another one. brief: kill instead
-    # of --file, for the panel's footer, which has no room for a path.
+    # the recorder by its history file, so it needs --file unless this is the
+    # default file. brief: kill instead of --file, for the panel's footer,
+    # which has no room for a path.
     def stop_command(pid, brief: false)
       return 'claude-limit-watch stop' if bare_stop_works?
 
@@ -209,11 +207,8 @@ module ClaudeLimitWatch
     private
 
     def bare_stop_works?
-      return false unless History.file == File.expand_path(History.default_file)
-
-      env = History.env_file
-      env.nil? || File.expand_path(env) == History.file
-    rescue ArgumentError # a path with ~nosuchuser: a bare stop couldn't use it either
+      History.file == File.expand_path(History.default_file)
+    rescue ArgumentError # HOME or XDG_STATE_HOME with ~nosuchuser: a bare stop couldn't use it either
       false
     end
 

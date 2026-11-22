@@ -22,41 +22,28 @@ RSpec.describe ClaudeLimitWatch::History do
       ClaudeLimitWatch::History.file = nil
     end
 
-    it 'comes from CLAUDE_LIMIT_WATCH_FILE' do
-      env('CLAUDE_LIMIT_WATCH_FILE' => '/x/h.jsonl')
-      expect([m.file, m.lock_file, m.log_file]).to eq(['/x/h.jsonl', '/x/h.jsonl.lock', '/x/recorder.log'])
-    end
-
-    it 'makes CLAUDE_LIMIT_WATCH_FILE absolute, expanding ~' do
-      env('CLAUDE_LIMIT_WATCH_FILE' => '~/h.jsonl')
-      expect(m.file).to eq(File.join(Dir.home, 'h.jsonl'))
-      env('CLAUDE_LIMIT_WATCH_FILE' => 'rel/h.jsonl')
-      expect(m.file).to eq(File.join(Dir.pwd, 'rel/h.jsonl'))
-    end
-
-    it 'ignores an empty CLAUDE_LIMIT_WATCH_FILE, which would mean the current directory' do
-      env('CLAUDE_LIMIT_WATCH_FILE' => '', 'XDG_STATE_HOME' => '/state')
-      expect(m.file).to eq('/state/claude-limit-watch/history.jsonl')
-    end
-
-    it 'makes a file it is given absolute' do
+    it 'makes a file it is given absolute, with its lock and log next to it' do
       m.file = 'rel/h.jsonl'
-      expect(m.file).to eq(File.join(Dir.pwd, 'rel/h.jsonl'))
+      dir = File.join(Dir.pwd, 'rel')
+      expect([m.file, m.lock_file, m.log_file])
+        .to eq(["#{dir}/h.jsonl", "#{dir}/h.jsonl.lock", "#{dir}/recorder.log"])
     end
 
     it 'expands ~ in XDG_STATE_HOME' do
-      env('CLAUDE_LIMIT_WATCH_FILE' => nil, 'XDG_STATE_HOME' => '~/state')
+      env('XDG_STATE_HOME' => '~/state')
       expect(m.file).to eq(File.join(Dir.home, 'state/claude-limit-watch/history.jsonl'))
     end
 
-    it 'is in the XDG state directory otherwise' do
-      env('CLAUDE_LIMIT_WATCH_FILE' => nil, 'XDG_STATE_HOME' => '/state')
+    it 'is in the XDG state directory' do
+      env('XDG_STATE_HOME' => '/state')
       expect(m.file).to eq('/state/claude-limit-watch/history.jsonl')
     end
 
-    it 'defaults to ~/.local/state' do
-      env('CLAUDE_LIMIT_WATCH_FILE' => nil, 'XDG_STATE_HOME' => nil)
-      expect(m.file).to eq(File.join(Dir.home, '.local/state/claude-limit-watch/history.jsonl'))
+    ['unset', 'empty'].each do |how|
+      it "defaults to ~/.local/state with XDG_STATE_HOME #{how}" do
+        env('XDG_STATE_HOME' => how == 'empty' ? '' : nil)
+        expect(m.file).to eq(File.join(Dir.home, '.local/state/claude-limit-watch/history.jsonl'))
+      end
     end
   end
 

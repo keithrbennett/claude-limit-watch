@@ -66,10 +66,9 @@ history file other than the default, give `stop` the same file:
 
     claude-limit-watch stop --file PATH
 
-That's what the viewer prints for such a file, and for the default file
-when `CLAUDE_LIMIT_WATCH_FILE` names another one (where a bare `stop` would
-find that one). The bottom of the panel has no room for a path, so in those
-cases it shows `kill <pid>` there instead, which works for any recorder.
+That's what the viewer prints for such a file. The bottom of the panel has
+no room for a path, so there it shows `kill <pid>` instead, which works for
+any recorder.
 
 The viewer starts the recorder only when it launches. If you stop the
 recorder while a viewer is open, the viewer reports that readings have
@@ -120,8 +119,7 @@ Polling every few seconds gets HTTP 429 from the usage endpoint, hence the
 ## History file
 
 `~/.local/state/claude-limit-watch/history.jsonl` (or under
-`$XDG_STATE_HOME`). Every command takes `--file PATH` to use another one,
-or you can set `CLAUDE_LIMIT_WATCH_FILE`; `--file` wins if both are given.
+`$XDG_STATE_HOME`). Every command takes `--file PATH` to use another one.
 A recorder the viewer starts uses the viewer's history file.
 
 JSON Lines: one JSON object per reading, appended, so the viewer never sees

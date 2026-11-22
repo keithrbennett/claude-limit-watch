@@ -42,10 +42,14 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
     end
 
     # The history file --once would show, with the real History.file, as at
-    # startup (nothing has read it yet). env: CLAUDE_LIMIT_WATCH_FILE.
-    def file_used(args, env: nil)
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('CLAUDE_LIMIT_WATCH_FILE').and_return(env)
+    # startup (nothing has read it yet). xdg: XDG_STATE_HOME, for the default
+    # file (otherwise the spec history file).
+    def file_used(args, xdg: nil)
+      unless xdg.nil?
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('XDG_STATE_HOME').and_return(xdg)
+        allow(history).to receive(:default_file).and_call_original
+      end
       used = nil
       allow(ClaudeLimitWatch::Panel).to receive(:run_once) { used = history.file }
       history.file = nil
@@ -63,10 +67,6 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
       expect(file_used(%w[--once --file=~/h.jsonl])).to eq(File.join(Dir.home, 'h.jsonl'))
     end
 
-    it 'takes precedence over CLAUDE_LIMIT_WATCH_FILE' do
-      expect(file_used(%w[--once --file /x/h.jsonl], env: '/env/h.jsonl')).to eq('/x/h.jsonl')
-    end
-
     it 'takes a path starting with - after =' do
       expect(file_used(%w[--once --file=-x])).to eq(File.join(Dir.pwd, '-x'))
     end
@@ -79,25 +79,33 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
         .to_stderr
     end
 
-    it "says so for CLAUDE_LIMIT_WATCH_FILE it can't expand, before any command" do
+    it "says so for an XDG_STATE_HOME it can't expand, before any command" do
       expect(ClaudeLimitWatch::Panel).not_to receive(:run_once)
       expect do
-        expect { file_used(%w[--once], env: '~nosuchuser/h.jsonl') }
+        expect { file_used(%w[--once], xdg: '~nosuchuser/state') }
           .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
-      end.to output(/\Aclaude-limit-watch: can't use the history file from CLAUDE_LIMIT_WATCH_FILE .*nosuchuser/)
+      end.to output("claude-limit-watch: can't use the default history file (check HOME and XDG_STATE_HOME): " \
+                    "user nosuchuser doesn't exist\n").to_stderr
+    end
+
+    it "says so for a HOME it can't expand, with XDG_STATE_HOME empty" do
+      allow(Dir).to receive(:home).and_return('~nosuchuser')
+      expect do
+        expect { file_used(%w[--once], xdg: '') }.to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+      end.to output(/can't use the default history file \(check HOME and XDG_STATE_HOME\): .*nosuchuser/).to_stderr
+    end
+
+    it "shows the usage, not a --file error, for a missing path with XDG_STATE_HOME unexpandable" do
+      expect do
+        expect { file_used(%w[--once --file], xdg: '~nosuchuser/state') }
+          .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
+      end.to output(%r{\AUsage:.*append\s+each reading to ~nosuchuser/state/claude-limit-watch/history\.jsonl\.}m)
         .to_stderr
     end
 
-    it 'shows the usage, not a --file error, for a missing path with CLAUDE_LIMIT_WATCH_FILE unexpandable' do
-      expect do
-        expect { file_used(%w[--once --file], env: '~nosuchuser/h.jsonl') }
-          .to raise_error(SystemExit) { |e| expect(e.status).to eq(1) }
-      end.to output(%r{\AUsage:.*append\s+each reading to ~nosuchuser/h\.jsonl\.}m).to_stderr
-    end
-
     ['--help', '--version'].each do |arg|
-      it "still takes #{arg} with CLAUDE_LIMIT_WATCH_FILE unexpandable" do
-        expect { file_used([arg], env: '~nosuchuser/h.jsonl') }.to output(/\A(Usage:|claude-limit-watch \d)/).to_stdout
+      it "still takes #{arg} with XDG_STATE_HOME unexpandable" do
+        expect { file_used([arg], xdg: '~nosuchuser/state') }.to output(/\A(Usage:|claude-limit-watch \d)/).to_stdout
       end
     end
 

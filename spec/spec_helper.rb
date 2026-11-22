@@ -6,7 +6,6 @@ require 'fileutils'
 # Predictable times and output.
 ENV['TZ'] = 'UTC'
 ENV['NO_COLOR'] = '1'
-ENV.delete('CLAUDE_LIMIT_WATCH_FILE') # specs that need it set it themselves
 
 require 'rspec'
 require 'claude_limit_watch'

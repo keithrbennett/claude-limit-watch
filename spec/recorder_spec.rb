@@ -180,10 +180,8 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     expect(m.start).to eq(999)
   end
 
-  it 'starts the recorder on a history file given with --file, even with CLAUDE_LIMIT_WATCH_FILE set' do
+  it 'starts the recorder on a history file given with --file' do
     allow(ClaudeLimitWatch::History).to receive(:file).and_return('/custom/h.jsonl')
-    allow(ENV).to receive(:[]).and_call_original
-    allow(ENV).to receive(:[]).with('CLAUDE_LIMIT_WATCH_FILE').and_return('/other/h.jsonl')
     allow(FileUtils).to receive(:mkdir_p)
     expect(Process).to receive(:spawn).with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record',
                                             '--file', '/custom/h.jsonl', Hash).and_return(999)
@@ -219,32 +217,9 @@ RSpec.describe ClaudeLimitWatch::Recorder do
       expect(m.stop_command(4321, brief: true)).to eq('claude-limit-watch stop')
     end
 
-    describe 'with CLAUDE_LIMIT_WATCH_FILE set' do
-      def env_file(value)
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('CLAUDE_LIMIT_WATCH_FILE').and_return(value)
-      end
-
-      it "gives --file for the default file when the variable names another, which bare stop would find" do
-        env_file('/other/h.jsonl')
-        expect(m.stop_command(4321)).to eq("claude-limit-watch stop --file #{Shellwords.escape(SPEC_HISTORY_FILE)}")
-        expect(m.stop_command(4321, brief: true)).to eq('kill 4321')
-      end
-
-      it "gives --file when the variable can't be expanded, which bare stop couldn't use" do
-        env_file('~nosuchuser/h.jsonl')
-        expect(m.stop_command(4321)).to eq("claude-limit-watch stop --file #{Shellwords.escape(SPEC_HISTORY_FILE)}")
-      end
-
-      it 'is the stop command when the variable names the default file too' do
-        env_file(SPEC_HISTORY_FILE)
-        expect(m.stop_command(4321)).to eq('claude-limit-watch stop')
-      end
-
-      it 'is the stop command when the variable is empty, which means unset' do
-        env_file('')
-        expect(m.stop_command(4321)).to eq('claude-limit-watch stop')
-      end
+    it "gives --file when XDG_STATE_HOME can't be expanded, which a bare stop couldn't use" do
+      allow(ClaudeLimitWatch::History).to receive(:default_file).and_return('~nosuchuser/state/h.jsonl')
+      expect(m.stop_command(4321)).to eq("claude-limit-watch stop --file #{Shellwords.escape(SPEC_HISTORY_FILE)}")
     end
   end
 

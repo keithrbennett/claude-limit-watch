@@ -14,8 +14,8 @@ module ClaudeLimitWatch
               each reading to #{shown_file}.
               --utc: show times in UTC instead of local time.
           claude-limit-watch stop
-              Stop the recorder for this history file: for a recorder started
-              with --file or CLAUDE_LIMIT_WATCH_FILE, give the same file here.
+              Stop the recorder for this history file: for a history file other
+              than the default, give the same --file as the recorder's.
           claude-limit-watch [view] [rate-window-minutes]
                              [--lines] [--once] [--no-record] [--utc]
               Show the readings, first starting the recorder in the background if it
@@ -33,8 +33,8 @@ module ClaudeLimitWatch
               Show the version.
 
         Every command also takes:
-          --file PATH: the history file to use (default: $CLAUDE_LIMIT_WATCH_FILE
-                       if set, or #{home_relative(History.default_file)}).
+          --file PATH: the history file to use (default:
+                       #{home_relative(History.default_file)}).
 
         #{VERSION_LINE}
       TEXT
@@ -75,8 +75,7 @@ module ClaudeLimitWatch
     def check_file
       History.file
     rescue ArgumentError => e
-      abort "claude-limit-watch: can't use the history file from CLAUDE_LIMIT_WATCH_FILE or XDG_STATE_HOME: " \
-            "#{e.message}"
+      abort "claude-limit-watch: can't use the default history file (check HOME and XDG_STATE_HOME): #{e.message}"
     end
 
     # The history file for the help, with ~ for the home directory; as given,
@@ -84,7 +83,7 @@ module ClaudeLimitWatch
     def shown_file
       home_relative(History.file)
     rescue ArgumentError
-      History.env_file || History.default_file
+      History.default_file
     end
 
     def view(args)

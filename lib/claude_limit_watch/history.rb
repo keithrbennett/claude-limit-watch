@@ -11,29 +11,25 @@ module ClaudeLimitWatch
 
     KEEP_DAYS = 7 # the recorder drops readings older than this
 
-    # The history file's absolute path: $CLAUDE_LIMIT_WATCH_FILE (if set and
-    # not empty), or history.jsonl in the XDG state directory. Settable, for a different file
-    # (--file). Made absolute (and ~ expanded) once, here, so the viewer, the
-    # recorder it starts and the stop hint all name the same file. Raises
-    # ArgumentError for a path that can't be expanded, such as ~nosuchuser/x.
+    # The history file's absolute path: history.jsonl in the XDG state
+    # directory, unless set to another file (--file). Made absolute (and ~
+    # expanded) once, here, so the viewer, the recorder it starts and the stop
+    # hint all name the same file. Raises ArgumentError for a path that can't
+    # be expanded, such as ~nosuchuser/x.
     def file
-      @file ||= File.expand_path(env_file || default_file)
+      @file ||= File.expand_path(default_file)
     end
 
     def file=(path)
       @file = path && File.expand_path(path)
     end
 
-    # $CLAUDE_LIMIT_WATCH_FILE as given, or nil if it's unset or empty (an
-    # empty path would otherwise mean the current directory).
-    def env_file
-      env = ENV['CLAUDE_LIMIT_WATCH_FILE']
-      env unless env.nil? || env.empty?
-    end
-
-    # The history file when $CLAUDE_LIMIT_WATCH_FILE isn't set.
+    # The history file without --file, not yet expanded. An empty
+    # XDG_STATE_HOME counts as unset, as the XDG spec says.
     def default_file
-      File.join(ENV['XDG_STATE_HOME'] || File.join(Dir.home, '.local', 'state'), 'claude-limit-watch', 'history.jsonl')
+      state = ENV['XDG_STATE_HOME']
+      state = File.join(Dir.home, '.local', 'state') if state.nil? || state.empty?
+      File.join(state, 'claude-limit-watch', 'history.jsonl')
     end
 
     # Held by the running recorder; holds its pid.
