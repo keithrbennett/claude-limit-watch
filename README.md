@@ -140,11 +140,11 @@ untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
       ║  ◆  C L A U D E   L I M I T   W A T C H  ◆  ║
       ╚═════════════════════════════════════════════╝
 
-      Claude's 5-hour usage limit · last reading 00:47 (<1m ago)
+      Claude's 5-hour usage limit · last reading 01:28 (<1m ago)
 
       Used   █████████████████████████████████████████████░░░░░   89%
       Time   ███████████████████████████████████████████░░░░░░░  4h 18m of 5h
-             21:10                                        02:10
+             21:10                                        02:10  now 01:28
 
       If usage continues at the rate of the last ... (all: since 21:10):
 
@@ -156,7 +156,7 @@ untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
 
              █ time so far · ▒ time left at that rate · X locked out (limit reached) · │ window ends
       ──────────────────────────────────────────────────────────────────────────────────────────────
-      q to quit · stop the recorder with: claude-limit-watch stop                          now 00:47
+      q to quit · stop the recorder with: claude-limit-watch stop                          now 01:28
       claude-limit-watch 0.1.0 · https://github.com/keithrbennett/claude-limit-watch
       Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
 
@@ -165,7 +165,9 @@ untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
   title instead, 4 rows shorter, so the panel fits a 24-row terminal
   whatever it shows.
 - **Used / Time**: quota used and time elapsed in the window (the Time bar
-  in lavender), with the window's start and end times underneath.
+  in lavender), with the window's start and end times underneath, then
+  the current time. The current time is also at the bottom of the panel,
+  which shows it even when there's no window.
 - **Projection bars**: what happens if usage continues at the rate of the
   last 10 minutes, 30 minutes, 1 hour, 2 hours (plus your rate window if
   different), or `all` (the average since the window started). Each bar is

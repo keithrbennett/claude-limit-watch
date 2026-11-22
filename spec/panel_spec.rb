@@ -66,12 +66,24 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     lines = panel(worst_records, worst_now, rows: 10, once: true) # --once ignores the terminal's height
     expect(lines[1]).to include(banner_text)
     expect(lines.grep(/q to quit/)).to be_empty
+    expect(lines).to include(a_string_matching(/\A +\d\d:\d\d +\d\d:\d\d  now 08:16\z/))
     expect(lines).to include(a_string_matching(/\A +now 08:16\z/))
   end
 
-  it 'shows the current time at the end of the rule' do
-    [80, 120].each do |cols|
-      lines = panel(window_records, NOW + 59, cols: cols)
+  it "shows the current time after the window's end time, under the elapsed time" do
+    # Ten minutes after the last reading, so the current time can't be
+    # mistaken for the last reading's.
+    [60, 80, 120].each do |cols|
+      lines = panel(window_records, NOW + 600, cols: cols)
+      time_bar = lines.index { |l| l.start_with?('  Time ') }
+      expect(lines[time_bar + 1]).to match(/\A +\d\d:\d\d +\d\d:\d\d  now 08:10\z/)
+      expect(lines[time_bar + 1].index('now')).to eq(lines[time_bar].index(/(\d+h )?\S+ of 5h\z/))
+    end
+  end
+
+  it 'shows the current time at the end of the rule, with or without a window' do
+    [[window_records, 80], [window_records, 120], [[], 80]].each do |records, cols|
+      lines = panel(records, NOW + 59, cols: cols)
       rule = lines.find { |l| l.include?('──') }
       expect(lines[lines.index(rule) + 1])
         .to match(/\A  q to quit · .* {2,}now 08:00\z/).and have_attributes(size: rule.size)
@@ -221,12 +233,12 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
   describe 'times' do
     def times(lines)
       heading = lines.grep(/last reading/).first[/(times in UTC · )?last reading \S+/]
-      [heading, lines.grep(/\A +\d\d:\d\d +\d\d:\d\d\z/).first.split]
+      [heading, lines.grep(/\A +\d\d:\d\d +\d\d:\d\d  now \d\d:\d\d\z/).first.split]
     end
 
     it 'shows local time' do
       in_zone('Asia/Singapore') do
-        expect(times(panel(window_records, NOW))).to eq(['last reading 16:00', %w[12:40 17:40]])
+        expect(times(panel(window_records, NOW))).to eq(['last reading 16:00', %w[12:40 17:40 now 16:00]])
       end
     end
 
@@ -234,7 +246,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       ClaudeLimitWatch::Format.utc = true
       in_zone('Asia/Singapore') do
         expect(times(panel(window_records, NOW)))
-          .to eq(['times in UTC · last reading 08:00', %w[04:40 09:40]])
+          .to eq(['times in UTC · last reading 08:00', %w[04:40 09:40 now 08:00]])
         expect(panel(window_records, NOW).grep(/limit at 0\d:\d\d/)).not_to be_empty
       end
     end

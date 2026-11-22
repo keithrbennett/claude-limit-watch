@@ -25,6 +25,7 @@ module ClaudeLimitWatch
       w = once ? 100 : term_width
       bar_w = (w - 47).clamp(10, 50) # leaves room for the projection rows' text
       p = st[:proj]
+      now_text = "now #{clock(now)}" # on the Time bar's second line, and at the bottom
       info =
         if st[:last_t]
           "last reading #{clock(st[:last_t])} (#{dur_m(now - st[:last_t])} ago)"
@@ -52,7 +53,10 @@ module ClaudeLimitWatch
         used_color = p[:util] >= 100 ? [COLORS[:urgent]] : [] # normal text color unless at the limit
         out << "  Used   #{bar(p[:util] / 100.0, bar_w, *used_color)}  #{format('%3d%%', p[:util].round)}"
         out << "  Time   #{bar(elapsed / WINDOW_MIN, bar_w, *ACCENT_COLOR)}  #{dur_m(elapsed * 60)} of 5h"
-        out << paint("         #{clock(window_start).ljust(bar_w - 5)}#{clock(p[:resets])}", GRAY)
+        # The window's start and end times, then the current time, under the
+        # elapsed time above it.
+        times = "#{clock(window_start).ljust(bar_w - 5)}#{clock(p[:resets])}"
+        out << paint("         #{times}  #{now_text}", GRAY)
         if st[:table] && p[:util] < 100
           out << ''
           since = clock(window_start)
@@ -106,7 +110,6 @@ module ClaudeLimitWatch
         else
           'q to quit'
         end
-      now_text = "now #{clock(now)}"
       out << paint("  #{footer}#{' ' * [rule_w - footer.size - now_text.size, 2].max}#{now_text}", GRAY)
       out << paint("  #{VERSION_LINE}", GRAY)
       out << paint("  #{recorder}", GRAY)
