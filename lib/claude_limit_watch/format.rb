@@ -42,18 +42,8 @@ module ClaudeLimitWatch
       Format.utc ? ' Times are in UTC.' : ''
     end
 
-    # Duration in seconds, in unambiguous units: "1h 12m", "58m", "3m 48s", "48s".
-    def dur(seconds)
-      s = [seconds.round, 0].max
-      if s >= 3600 then format('%dh %02dm', s / 3600, (s % 3600) / 60)
-      elsif s >= 600 then "#{s / 60}m"
-      elsif s >= 60 then format('%dm %02ds', s / 60, s % 60)
-      else "#{s}s"
-      end
-    end
-
-    # Duration to the minute, so the panel's text (and the screen) changes only
-    # about once a minute: "1h 12m", "58m", "<1m".
+    # Duration, rounded to the minute: "1h 12m", "58m", "<1m". On the panel,
+    # that means the text (and the screen) changes only about once a minute.
     def dur_m(seconds)
       m = (seconds / 60.0).round
       return '<1m' if m < 1

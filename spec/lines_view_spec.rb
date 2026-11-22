@@ -51,6 +51,11 @@ RSpec.describe ClaudeLimitWatch::LinesView do
     it 'adds no hint when there is none' do
       expect(m.stale_line(NOW, NOW - 900, nil, record: false)).to eq('08:00 | no new readings for 15m.')
     end
+
+    it 'gives the gap to the nearest minute, as the panel does' do
+      expect(m.stale_line(NOW, NOW - 228, nil, record: false)).to eq('08:00 | no new readings for 4m.')
+      expect(m.stale_line(NOW, NOW - 948, nil, record: false)).to eq('08:00 | no new readings for 16m.')
+    end
   end
 
   describe '.intro' do

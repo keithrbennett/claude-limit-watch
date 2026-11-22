@@ -46,7 +46,7 @@ module ClaudeLimitWatch
     # recorder's, or nil; record: as for run.
     def stale_line(now, last_t, pid, record:)
       hint = Recorder.stale_hint(pid, record: record)
-      paint("#{clock(now)} | no new readings for #{dur(now - last_t)}.#{" #{hint}" if hint}", WARN)
+      paint("#{clock(now)} | no new readings for #{dur_m(now - last_t)}.#{" #{hint}" if hint}", WARN)
     end
 
     # The lines before the readings. pid: the running recorder's, or nil;

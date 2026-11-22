@@ -13,7 +13,7 @@ RSpec.describe ClaudeLimitWatch::Snapshot, '.build' do
 
   it 'reports only failed checks' do
     st = snap([error_record(NOW - 60)], NOW)
-    expect(st[:no_reading]).to be(true)
+    expect(st).not_to include(:no_data, :proj)
     expect(st[:error]).to eq('HTTP 429 from usage endpoint')
   end
 
@@ -35,9 +35,15 @@ RSpec.describe ClaudeLimitWatch::Snapshot, '.build' do
     expect(st[:error]).to be_nil
   end
 
+  # A reading from the previous window, 50 minutes ago: inside the 1h and 2h
+  # look-backs, so they would use it if it counted. The current window is 40
+  # minutes old, with 35 minutes of readings: too little for either.
   it 'counts only the current window' do
-    old = { t: NOW - (400 * 60), interval: 5.0, util: 90.0, resets: NOW - (100 * 60) }
-    expect(snap([old] + window_records, NOW)[:history].size).to eq(window_records.size)
+    current = window_records(elapsed: 40, knots: [[0, 0], [40, 20]])
+    old = { t: NOW - (50 * 60), interval: 5.0, util: 90.0, resets: NOW - (40 * 60) }
+    st = snap([old] + current, NOW)
+    expect(st[:table].select { |r| r[:na] }.map { |r| r[:label] }).to eq(%w[1h 2h])
+    expect(st.values_at(:proj, :table)).to eq(snap(current, NOW).values_at(:proj, :table))
   end
 
   it 'is stale after two intervals and a minute' do

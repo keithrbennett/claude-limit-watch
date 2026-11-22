@@ -54,10 +54,10 @@ module ClaudeLimitWatch
       reset_min = (resets - now) / 60.0
       elapsed_min = WINDOW_MIN - reset_min
       avg_rate = elapsed_min.positive? ? util / elapsed_min : nil
-      recent_rate, recent_span = rate_over(history, now, util, rate_window)
+      recent_rate, = rate_over(history, now, util, rate_window)
       rate = recent_rate || avg_rate
       { util: util, resets: resets, reset_min: reset_min, elapsed_min: elapsed_min,
-        avg_rate: avg_rate, recent_rate: recent_rate, recent_span_min: recent_span, rate: rate }
+        avg_rate: avg_rate, recent_rate: recent_rate, rate: rate }
         .merge(assess(util, rate, reset_min))
     end
 
