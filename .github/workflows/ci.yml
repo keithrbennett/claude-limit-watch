@@ -45,6 +45,10 @@ jobs:
         run: bundle exec rake
       - name: Build the gem
         run: gem build claude-limit-watch.gemspec
+      - name: Check the gem includes every tracked file it should ship
+        run: |
+          diff <(gem spec claude-limit-watch-*.gem files | sed -n 's/^- //p' | LC_ALL=C sort) \
+               <(git ls-files -- lib exe docs/images README.md CHANGELOG.md LICENSE | LC_ALL=C sort)
       - name: Run the executable
         run: |
           exe/claude-limit-watch --version

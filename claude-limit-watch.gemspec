@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'English'
 require_relative 'lib/claude_limit_watch/version'
 
 Gem::Specification.new do |spec|
@@ -18,7 +19,19 @@ Gem::Specification.new do |spec|
   spec.homepage      = ClaudeLimitWatch::HOMEPAGE
   spec.required_ruby_version = '>= 2.6'
 
-  spec.files = Dir['lib/**/*.rb', 'exe/*', 'docs/images/*', 'README.md', 'CHANGELOG.md', 'LICENSE']
+  spec.files = Dir.chdir(File.expand_path(__dir__)) do
+    files = Dir['lib/**/*.rb', 'exe/*', 'docs/images/*', 'README.md', 'CHANGELOG.md', 'LICENSE']
+    # In a git checkout, ship only tracked files, so untracked or ignored files
+    # in the working tree never end up in the gem. Without git or a .git
+    # directory (e.g. building from a source tarball), ship the globbed files.
+    tracked = begin
+      `git ls-files -z 2>#{File::NULL}`.split("\x0")
+    rescue SystemCallError
+      []
+    end
+    tracked_files = files & tracked
+    $CHILD_STATUS&.success? && !tracked_files.empty? ? tracked_files : files
+  end
   spec.bindir        = 'exe'
   spec.executables   = ['claude-limit-watch']
   spec.require_paths = ['lib']
