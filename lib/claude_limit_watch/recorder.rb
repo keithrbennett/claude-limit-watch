@@ -119,7 +119,7 @@ module ClaudeLimitWatch
     # truncates lines to the terminal's width.
     def stale_hint(pid, record:)
       if pid
-        "Recorder (pid #{pid}) stuck? Check its output"
+        "Check the output of the recorder (pid #{pid})"
       elsif record
         'Restart the viewer, or see recorder.log'
       end

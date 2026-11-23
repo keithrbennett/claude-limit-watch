@@ -75,8 +75,8 @@ recorder while a viewer is open, the viewer reports that readings have
 stopped, and says to restart the viewer (to start a recorder again), or to
 see `recorder.log` (if one couldn't start). With `--no-record` or `--once`
 it just reports that readings stopped. If a recorder is running but
-readings have stopped anyway, it asks whether the recorder is stuck: check
-its output, which for one the viewer started is `recorder.log`, next to the
+readings have stopped anyway, it says to check the recorder's output,
+which for one the viewer started is `recorder.log`, next to the
 history file.
 
 ## Viewing without recording
@@ -179,8 +179,8 @@ untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
   So a bar that lasts to the end is █ then ▒, and one that runs out is █,
   ▒, then X (in red text). The fills tell the parts apart without color
   too. The text gives the hit time and how long you'd be locked out ("limit at
-  01:49 · 20m locked out"), or how much you'd have used by the end ("lasts
-  · 88% used at the end"). A row whose history doesn't reach back the
+  01:49 · 20m locked out"), or how much you'd have used by the end ("limit
+  not reached · 88% at the end"). A row whose history doesn't reach back the
   whole look-back is labeled with what it covers (e.g. `1h50m`); one with
   too little history says so.
 - **No projections for the window's first 30 minutes** (`MIN_ELAPSED_MIN`);

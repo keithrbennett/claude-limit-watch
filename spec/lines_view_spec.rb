@@ -124,7 +124,7 @@ RSpec.describe ClaudeLimitWatch::LinesView do
     it 'passes --no-record and the running recorder to the warning' do
       expect(run_once(record: false, pid: nil).last).to eq('08:15 | no new readings for 15m.')
       expect(run_once(record: false, pid: 4321).last)
-        .to eq('08:15 | no new readings for 15m. Recorder (pid 4321) stuck? Check its output')
+        .to eq('08:15 | no new readings for 15m. Check the output of the recorder (pid 4321)')
     end
   end
 

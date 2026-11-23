@@ -230,7 +230,7 @@ RSpec.describe ClaudeLimitWatch::Recorder do
   describe '.stale_hint' do
     it 'says to check a running recorder' do
       [true, false].each do |record|
-        expect(m.stale_hint(4321, record: record)).to eq('Recorder (pid 4321) stuck? Check its output')
+        expect(m.stale_hint(4321, record: record)).to eq('Check the output of the recorder (pid 4321)')
       end
     end
 

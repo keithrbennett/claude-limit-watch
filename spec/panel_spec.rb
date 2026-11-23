@@ -122,7 +122,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
 
     it 'says to check a running recorder, in full at 80 columns' do
       expect(warning(pid: 4_194_304, now: NOW + (65 * 60))) # the largest pid on Linux
-        .to eq('  No new readings for 1h 05m. Recorder (pid 4194304) stuck? Check its output')
+        .to eq('  No new readings for 1h 05m. Check the output of the recorder (pid 4194304)')
     end
 
     it 'says to restart the viewer when no recorder is running' do

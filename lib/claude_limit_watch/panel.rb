@@ -147,7 +147,7 @@ module ClaudeLimitWatch
           text = "limit at #{clock(r[:eta_at])} · #{dur_m(locked)} locked out"
         else
           bar = paint(SO_FAR_CHAR * so_far, *ACCENT_COLOR) + paint(LEFT_CHAR * (bar_w - so_far), COLORS[:ok])
-          text = "lasts · #{r[:end_pct].round}% used at the end"
+          text = "limit not reached · #{r[:end_pct].round}% at the end"
         end
         "  #{label} #{bar}#{paint('│', GRAY)} #{paint(text, COLORS[runs_out ? :urgent : :ok])}"
       end
