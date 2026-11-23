@@ -70,7 +70,7 @@ module ClaudeLimitWatch
           out << ''
           start_at = clock(window_start + (Projection::MIN_ELAPSED_MIN * 60))
           out << paint("  Projections start #{Projection::MIN_ELAPSED_MIN}m into the window " \
-                       "(at #{start_at}): the first minutes are too little to go on.", GRAY)
+                       "(at #{start_at}). Before then, there is not enough data.", GRAY)
         end
       end
       if st[:error]
