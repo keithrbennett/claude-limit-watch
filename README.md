@@ -2,139 +2,82 @@
 
 [![CI](https://github.com/keithrbennett/claude-limit-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/keithrbennett/claude-limit-watch/actions/workflows/ci.yml)
 
-Watch the Claude subscription's 5-hour usage limit.
+Watch your Claude subscription's 5-hour usage limit from the terminal. It
+records your usage over time and projects when you will reach the limit.
 
 **Unofficial.** claude-limit-watch isn't made, endorsed or supported by
 Anthropic. It reads your usage from an undocumented endpoint, which may
 change or stop working at any time. It uses the OAuth token Claude Code
 stores on your machine, and sends it only to `api.anthropic.com`.
 
-![The claude-limit-watch dashboard](docs/images/dashboard.png)
+![The claude-limit-watch panel](docs/images/panel.png)
 
 ## Installation
 
     gem install claude-limit-watch
 
-It uses only the Ruby standard library (Ruby 2.6+), so it runs on macOS's
-system Ruby. Normally you just run the viewer:
+It needs Ruby 2.6 or later and uses only the standard library, so it runs
+on macOS's system Ruby.
+
+### Platforms
+
+Linux and macOS are supported; CI tests both, on Ruby 2.6 through 4.0.
+WSL on Windows is expected to work but isn't tested.
+
+To use it in WSL, Claude Code must be signed in inside WSL, because
+claude-limit-watch reads the credentials from `~/.claude/.credentials.json`
+there.
+
+Native Windows isn't supported, because the viewer starts the recorder with
+`nohup` in its own Unix process group, and the panel reads keys through
+`stty`.
+
+## Usage
 
     claude-limit-watch [view] [rate-window-minutes]
         [--lines] [--once] [--no-record] [--utc] [--file PATH]
 
-It starts a background recorder if one isn't running (unless `--no-record`
-or `--once`), then shows the readings. `claude-limit-watch --help` lists
-all the commands and options, and `--version` shows the version. Two
-processes are involved:
+`view` is the default command, so normally you just run
+`claude-limit-watch`. `claude-limit-watch --help` lists all the commands
+and options, and `--version` shows the version.
 
-- **The recorder** checks usage every 5 minutes and appends each reading to
-  the history file. The viewer starts it with `nohup`, in its own process
-  group, so it keeps running after you quit the viewer or close its
-  terminal. Only one recorder runs at a time.
-- **The viewer** reads only the history file and never calls the network,
-  so you can close and reopen it freely, and it has the full history as
-  soon as it starts. **rate-window-minutes** (default 30) is how far back
-  the burn rate looks in `--lines` output; on the panel it adds a row to
-  the projection bars if it isn't one of 10, 30, 60 or 120.
+claude-limit-watch has two parts, which run as separate processes:
 
-### Upgrading
+- **The recorder** checks your usage every 5 minutes and appends each
+  reading to the [history file](#history-file). Only one recorder runs at a
+  time for each history file.
+- **The viewer** displays the readings from the history file. It never
+  contacts the network, so you can close and reopen it at any time without
+  losing history.
 
-    gem update claude-limit-watch
-    claude-limit-watch stop
+When the viewer starts, it starts a recorder in the background if one
+isn't already running (unless you pass `--no-record` or `--once`). The
+recorder is started with `nohup` in its own process group, so it keeps
+running after you quit the viewer or close its terminal.
 
-A running recorder keeps running the version it started with, and a viewer
-uses a running recorder rather than starting its own. So after updating,
-stop the recorder (see [Stopping the recorder](#stopping-the-recorder));
-the next viewer starts the new version.
+In a terminal, the viewer shows a full-screen [panel](#panel). With
+`--lines`, or when its output isn't a terminal, it prints
+[one line per reading](#line-output) instead.
 
-### Platforms
+### Options
 
-Linux and macOS; CI tests both, on Ruby 2.6 through 4.0. On Windows, use
-WSL, where it should run as on Linux (untested). There it reads Claude
-Code's credentials from `~/.claude/.credentials.json` inside WSL, so Claude
-Code needs to be signed in there too. Native Windows isn't supported: the
-viewer starts the recorder with `nohup` in its own Unix process group, and
-the panel reads keys through `stty`.
+- **rate-window-minutes** (default 30): how far back the burn rate looks in
+  `--lines` output. On the panel, if it isn't 10, 30, 60 or 120, it
+  adds a row to the projection bars.
+- **`--lines`**: print one line per reading instead of the panel.
+- **`--once`**: print the panel once and exit, without starting a
+  recorder. When piped, the output has no colors.
+- **`--no-record`**: don't start a recorder; just show the history file.
+  See [Viewing without recording](#viewing-without-recording).
+- **`--utc`**: show times in UTC. See [Times in UTC](#times-in-utc).
+- **`--file PATH`**: use a different history file. Every command takes
+  this option.
 
-## Stopping the recorder
+## Panel
 
-    claude-limit-watch stop
-
-The viewer shows this at the bottom of the screen with the recorder's pid,
-and prints it again when you quit (q or Ctrl-C), so it stays in your
-scrollback. `stop` finds the recorder by its history file, so for a
-history file other than the default, give `stop` the same file:
-
-    claude-limit-watch stop --file PATH
-
-That's what the viewer prints for such a file. The bottom of the panel has
-no room for a path, so there it shows `kill <pid>` instead, which works for
-any recorder.
-
-The viewer starts the recorder only when it launches. If you stop the
-recorder while a viewer is open, the viewer reports that readings have
-stopped, and says to restart the viewer (to start a recorder again), or to
-see `recorder.log` (if one couldn't start). With `--no-record` or `--once`
-it just reports that readings stopped. If a recorder is running but
-readings have stopped anyway, it says to check the recorder's output,
-which for one the viewer started is `recorder.log`, next to the
-history file.
-
-## Viewing without recording
-
-    claude-limit-watch --no-record
-
-The viewer doesn't start a recorder; it just shows the history file. Use it for
-a history file that nothing should record to: a copy from another machine, a
-demo file, or any file you point `--file` at just to look at. A recorder that's
-already running keeps running, and the viewer still shows whether one is. If
-readings stop, it says so, but doesn't suggest starting a recorder (neither does
-`--once`).
-
-## Times in UTC
-
-    claude-limit-watch --utc
-
-Shows every time in UTC instead of local time: on the panel, whose heading then
-says so once for all of them (`times in UTC · last reading 09:00`), and in
-`--lines` output, which says so before the readings ("Times are in UTC."). Local
-time, the default, has no marker. `record --utc` does the same for the
-recorder's own output, and a recorder the viewer starts gets the viewer's
-setting, which it keeps for as long as it runs. It changes only what's shown:
-the history file is the same either way, since its times include their UTC
-offsets.
-
-## Running the recorder yourself
-
-    claude-limit-watch record [interval-minutes] [--utc] [--file PATH]
-
-Runs in the foreground (Ctrl-C to stop) and prints one short line per
-reading. Use this to choose a different interval (default 5; fractions OK,
-minimum 0.5): start it before the viewer, and the viewer will use it instead
-of starting its own. A viewer finds a recorder by its history file, so give
-both the same `--file`, if any.
-
-Polling every few seconds gets HTTP 429 from the usage endpoint, hence the
-0.5-minute minimum. Its actual rate limit isn't documented.
-
-## History file
-
-`~/.local/state/claude-limit-watch/history.jsonl` (or under
-`$XDG_STATE_HOME`). Every command takes `--file PATH` to use another one.
-A recorder the viewer starts uses the viewer's history file.
-
-JSON Lines: one JSON object per reading, appended, so the viewer never sees
-a half-rewritten file:
-
-    {"t":"2026-11-17T23:19:47+08:00","interval_min":5.0,"util":46.0,"resets_at":"2026-11-17T18:09:59Z"}
-    {"t":"2026-11-17T23:24:47+08:00","interval_min":5.0,"error":"HTTP 429 from usage endpoint"}
-
-The recorder drops readings older than 7 days. A background recorder's
-output goes to `recorder.log` in the same directory.
-
-## Dashboard (default in a terminal)
-
-A full-screen panel on the terminal's alternate screen, so your scrollback is
-untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
+The panel takes over the whole terminal window, like `less` or `vim`,
+and when you quit, your earlier terminal output is restored. Press **q** or
+Ctrl-C to quit; the recorder keeps running.
 
       ╔═════════════════════════════════════════════╗
       ║  ◆  C L A U D E   L I M I T   W A T C H  ◆  ║
@@ -160,123 +103,281 @@ untouched. Press **q** (or Ctrl-C) to quit; a running recorder keeps running.
       claude-limit-watch 0.1.0 · https://github.com/keithrbennett/claude-limit-watch
       Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
 
-- **Heading**: a framed title in lavender. In a terminal too narrow for
-  it, or too short for the whole panel, the heading is a plain one-line
-  title instead, 4 rows shorter, so the panel fits a 24-row terminal
-  whatever it shows.
-- **Used / Time**: quota used and time elapsed in the window (the Time bar
-  in lavender), with the window's start and end times underneath, then
-  the current time. The current time is also at the bottom of the panel,
-  which shows it even when there's no window.
-- **Projection bars**: what happens if usage continues at the rate of the
-  last 10 minutes, 30 minutes, 1 hour, 2 hours (plus your rate window if
-  different), or `all` (the average since the window started). Each bar is
-  on the same time scale as the Time bar and lines up under it, in three
-  parts, each with its own color and fill: lavender █, the time so far;
-  green ▒, the time you could keep working at that rate; and bold red X's
-  on dark red, the time you'd be locked out after hitting the limit (at
-  least one column whenever there's any), and │ is the end of the window.
-  So a bar that lasts to the end is █ then ▒, and one that runs out is █,
-  ▒, then X (in red text). The fills tell the parts apart without color
-  too. The text gives the hit time and how long you'd be locked out ("limit at
-  01:49 · 20m locked out"), or how much you'd have used by the end ("limit
-  not reached · 88% at the end"). A row whose history doesn't reach back the
-  whole look-back is labeled with what it covers (e.g. `1h50m`); one with
-  too little history says so.
-- **No projections for the window's first 30 minutes** (`MIN_ELAPSED_MIN`);
-  a single line says when they start. Windows often start with a burst
-  (resumed sessions re-sending their whole conversation), and any rate
-  measured in those minutes would predict a limit hit that isn't coming.
-- There's no single overall projection: each look-back window gets its own
-  bar. A status line appears only when there's no projection to show: at
-  the limit (red, with the reset time), no readings yet, or no active
-  window.
-- A failed check (expired token, 429, network) shows as a yellow line. If
-  readings stop arriving, it says so, and what to do about it.
-- Below a rule, the bottom lines show how to quit and stop the recorder,
-  with the current time at the right; the version and project page; and
-  whether the recorder is running, with its pid and the history file it
-  writes to. `--once` leaves out how to quit, but still shows the time.
+From top to bottom:
 
-It checks for changes every second but redraws only when the text changes,
-about once a minute (times are shown to the minute), so you can select and
-copy from it between changes. To copy the whole panel, print it once:
+- **Heading**: a framed title in lavender. If the terminal is too narrow
+  for the frame, or too short for the whole panel, a one-line title
+  replaces it. This saves 4 rows, so the panel fits in a 24-row
+  terminal.
+- **Used**: the percentage of the quota used in the current window.
+- **Time**: how much of the 5-hour window has passed (in lavender). Below
+  it are the window's start and end times, followed by the current time.
+- **Projection bars**: one bar per look-back period, showing what happens
+  if usage continues at the rate of the last 10 minutes, 30 minutes, 1
+  hour or 2 hours (plus your rate window, if it's different). The `all`
+  row uses the average rate since the window started. There is no single
+  overall projection.
+- **Bottom lines**, below a horizontal rule: how to quit and how to stop
+  the recorder, with the current time on the right; the version and
+  project page; and whether the recorder is running, with its pid and the
+  history file it writes to. With `--once`, the line about quitting is
+  left out, but the current time is still shown.
+
+### Reading the projection bars
+
+Each bar uses the same time scale as the Time bar and lines up under it. A
+bar has up to three parts, each with its own fill character and color:
+
+| Fill | Color                    | Meaning                                       |
+|------|--------------------------|-----------------------------------------------|
+| █    | lavender                 | time elapsed so far                           |
+| ▒    | green                    | time you can keep working at that rate        |
+| X    | bold red on dark red     | time you'd be locked out after the limit      |
+| │    |                          | the end of the window                         |
+
+A bar that lasts to the end of the window has only █ and ▒. A bar that
+reaches the limit also has X, shown with at least one X whenever there is
+any lockout, and its text is red. Because the fill characters differ, you
+can tell the parts apart without color.
+
+The text after each bar gives either the time you'd reach the limit and
+how long you'd be locked out (`limit at 01:49 · 20m locked out`), or how
+much of the quota you'd have used when the window ends
+(`limit not reached · 88% at the end`).
+
+If the history doesn't go back as far as a row's look-back period, the row
+is labeled with the period it actually covers (for example `1h50m` instead
+of `2h`). If there is too little history for a row, the row says so.
+
+### When the panel shows no projections
+
+- **During the first 30 minutes of a window** (`MIN_ELAPSED_MIN`), a single
+  line says when projections will start. Usage often spikes at the start
+  of a window, because resumed sessions resend their whole conversation.
+  A rate measured during those minutes would predict a limit that you
+  won't actually reach.
+- **At the limit**, with no readings yet, or with no active window, a
+  status line replaces the projection bars. At the limit, the line is red
+  and shows the reset time.
+
+### Errors
+
+A failed check (for example, an expired token, an HTTP 429 response or a
+network error) appears as a yellow line. If readings stop arriving, the
+panel says so and suggests what to do; see
+[When readings stop](#when-readings-stop).
+
+### Copying from the panel
+
+The panel checks for changes every second, but redraws only when its
+text changes. Times are shown to the minute, so this is usually about once
+a minute, and you can select and copy text between redraws. To copy the
+whole panel, print it once:
 
     claude-limit-watch --once | xclip -selection clipboard   # pbcopy on macOS
 
-`--once` prints the panel without colors when piped, then exits; it doesn't
-start the recorder.
+## Line output
 
-## Lines (`--lines`, or when output isn't a terminal)
-
-Prints the readings already recorded for the current window, then one line
-per new reading:
+With `--lines`, or when output isn't a terminal, the viewer prints the
+readings already recorded for the current window, then one line for each
+new reading:
 
     Time  | Level  | Window       | Ends  | Used | 30m Burn Rate           |  Pace | Outlook
     22:49 | WARN   | 2:00 of 5:00 | 01:49 |  33% | 30.0%/h (avg 16.2)      |  1.3x | LIMIT at 01:04 (in 2:15), 0:45 before reset
     23:18 | no reading: rate-limited by the usage endpoint (HTTP 429); try a longer interval
 
-Durations here are h:mm. At the limit the outlook shows
+Durations are shown as h:mm. At the limit, the Outlook column shows
 `AT LIMIT, resets in h:mm`.
 
-## Levels
+**Pace** is the current rate divided by the rate that would use exactly
+the remaining quota by the end of the window. A pace of 1.0x reaches the
+limit just as the window ends. For example, using 20% in the first 20
+minutes is a pace of about 3.5x.
 
-On the panel, the time left at each rate is green, and red marks the
-time you'd be locked out; a row whose rate runs out also has red text.
+### Levels
 
-Each line in `--lines` output is green (OK), yellow (WARN) or red (URGENT):
-WARN when that rate hits the limit before the end of the window; URGENT
-when its pace is 2x or more (e.g. 20% used in the first 20 minutes is about
-3.5x), the hit is within 20 minutes, or you're at the limit. Thresholds are
-constants at the top of `lib/claude_limit_watch/projection.rb`.
+Each line is colored by its level:
+
+- **OK** (green): at this rate, you won't reach the limit before the window
+  ends.
+- **WARN** (yellow): at this rate, you will reach the limit before the
+  window ends.
+- **URGENT** (red): you'll reach the limit before the window ends, and
+  either the pace is 2x or more or the limit is 20 minutes away or less.
+  Also shown when you're at the limit.
+
+The thresholds are constants at the top of
+`lib/claude_limit_watch/projection.rb`.
+
+## Colors
 
 Colors come from the 256-color palette (green 114, yellow 220, red 196,
-dark red 52, lavender 141), since terminal themes often remap the 16 basic
-colors (yellow showing as orange, for example). The exception is the gray
-of secondary text: the basic bright black, which themes remap to their own
-muted text color. Colors are off when `NO_COLOR` is set.
+dark red 52, lavender 141), because terminal themes often change the 16
+basic colors (showing yellow as orange, for example). The exception is the
+gray used for secondary text: it is the basic "bright black", which themes
+change to their own muted text color, as intended.
+
+Set the `NO_COLOR` environment variable to turn colors off.
+
+## Viewing without recording
+
+    claude-limit-watch --no-record
+
+The viewer shows the history file without starting a recorder. Use this
+for a history file that nothing should record to, such as a copy from
+another machine, a demo file, or any file you open with `--file` just to
+look at it.
+
+A recorder that is already running keeps running, and the viewer still
+shows whether one is running. If readings stop, the viewer says so, but
+doesn't suggest starting a recorder. `--once` behaves the same way.
+
+## Times in UTC
+
+    claude-limit-watch --utc
+
+Shows all times in UTC instead of local time. Local time, the default, has
+no marker. With UTC:
+
+- the panel heading says so once for all times
+  (`times in UTC · last reading 09:00`);
+- `--lines` output prints `Times are in UTC.` before the readings.
+
+`record --utc` does the same for the recorder's own output. A recorder that
+the viewer starts uses the viewer's setting for as long as it runs.
+
+This option changes only what's displayed. The history file is the same
+either way, because its times include their UTC offsets.
+
+## The recorder
+
+### Running the recorder yourself
+
+    claude-limit-watch record [interval-minutes] [--utc] [--file PATH]
+
+Runs the recorder in the foreground, printing one short line per reading.
+Press Ctrl-C to stop it.
+
+Use this to check at a different interval. The default is 5 minutes; the
+minimum is 0.5, and fractions are allowed. Start the recorder before the
+viewer, and the viewer will use it instead of starting its own. The viewer
+finds the recorder by its history file, so if you use `--file`, give both
+commands the same path.
+
+The minimum exists because checking every few seconds gets HTTP 429 (Too
+Many Requests) responses from the usage endpoint. The endpoint's actual
+rate limit isn't documented.
+
+### Stopping the recorder
+
+    claude-limit-watch stop
+
+`stop` finds the recorder by its history file. If you use a history file
+other than the default, give `stop` the same file:
+
+    claude-limit-watch stop --file PATH
+
+You don't need to remember this command. The bottom of the panel shows
+how to stop the recorder, and when you quit the viewer, it prints the
+command again so it stays in your scrollback. For a non-default history
+file, the printed command includes `--file PATH`. The panel has no room
+for a path, so for such a file it shows `kill <pid>` instead, which works
+for any recorder.
+
+### When readings stop
+
+The viewer starts a recorder only when the viewer itself starts. If the
+recorder stops while the viewer is open, the viewer reports that readings
+have stopped, and suggests one of the following:
+
+- **No recorder is running**: restart the viewer to start a new recorder.
+  If a new recorder fails to start, see `recorder.log`, in the same
+  directory as the history file.
+- **A recorder is running, but readings have stopped anyway**: check the
+  recorder's output. For a recorder the viewer started, that's
+  `recorder.log`.
+
+With `--no-record` or `--once`, the viewer only reports that readings have
+stopped.
+
+## History file
+
+The default history file is
+`~/.local/state/claude-limit-watch/history.jsonl`, or
+`$XDG_STATE_HOME/claude-limit-watch/history.jsonl` if `XDG_STATE_HOME` is
+set. Every command takes `--file PATH` to use a different file. A recorder
+that the viewer starts uses the viewer's history file.
+
+The file is in JSON Lines format: one JSON object per reading. Readings are
+only ever appended, so the viewer never sees a partly rewritten file.
+
+    {"t":"2026-11-17T23:19:47+08:00","interval_min":5.0,"util":46.0,"resets_at":"2026-11-17T18:09:59Z"}
+    {"t":"2026-11-17T23:24:47+08:00","interval_min":5.0,"error":"HTTP 429 from usage endpoint"}
+
+The recorder deletes readings older than 7 days. A background recorder
+writes its output to `recorder.log`, in the same directory as the history
+file.
+
+## Upgrading
+
+    gem update claude-limit-watch
+    claude-limit-watch stop
+
+A running recorder keeps running the version it started with, and a new
+viewer uses the running recorder instead of starting its own. So after
+updating, stop the recorder (see
+[Stopping the recorder](#stopping-the-recorder)); the next viewer you start
+will start a recorder running the new version.
 
 ## How it works
 
-- Data source: `https://api.anthropic.com/api/oauth/usage` (undocumented; the
-  claude-dashboard status line uses it too), authenticated with Claude Code's
-  OAuth token (`~/.claude/.credentials.json` on Linux, the
-  `Claude Code-credentials` Keychain item on macOS; the first Keychain read
-  may ask for permission).
-- Utilization is account-wide, so it covers every concurrent Claude Code
-  session and any other tools using your Claude login.
-- The endpoint returns only the current utilization and the window's reset
-  time, no history; the history is the recorder's own readings. The rate
-  over the last N minutes uses the reading closest to N minutes ago (up to
-  10%, at least a minute, older), and needs the history to cover at least
-  3/4 of N. The `all` row (and `--lines` output, until there's enough
-  history) uses the window average: utilization divided by the time since
-  the window started (the reset time minus 5 hours).
-- Utilization comes back in whole percentage points, so a short look-back
-  window is coarse: over 10 minutes, one point is 6 %/h.
-- If no Claude Code session has run for a while the token may be expired;
-  the recorder logs that until Claude Code refreshes it.
+- **Data source**: `https://api.anthropic.com/api/oauth/usage`. This
+  endpoint is undocumented; the claude-dashboard status line also uses it.
+  Requests are authenticated with Claude Code's OAuth token, which is read
+  from `~/.claude/.credentials.json` on Linux, or from the
+  `Claude Code-credentials` Keychain item on macOS. The first Keychain read
+  may ask for permission.
+- **Scope**: utilization is account-wide. It includes every Claude Code
+  session running at the same time, and any other tools that use your
+  Claude login.
+- **History**: the endpoint returns only the current utilization and the
+  window's reset time. All history comes from the recorder's own readings.
+- **Rate over the last N minutes**: calculated from the reading closest to
+  N minutes ago. That reading may be up to 10% older than N minutes (at
+  least 1 minute older is always allowed). The history must cover at least
+  3/4 of N minutes, or the rate isn't calculated.
+- **Window average**: utilization divided by the time since the window
+  started (the reset time minus 5 hours). The `all` row uses it, and so
+  does `--lines` output until there's enough history for the rate window.
+- **Precision**: utilization is reported in whole percentage points, so
+  rates over short periods are coarse. Over 10 minutes, a change of one
+  point is a rate of 6%/h.
+- **Expired tokens**: if no Claude Code session has run for a while, the
+  token may have expired. The recorder logs an error for each check until
+  Claude Code refreshes the token.
 
 ## Development
 
     bundle install
-    bundle exec rake          # runs the specs (RSpec)
-    bundle exec rake rubocop  # checks the style (needs Ruby 2.7 or later)
+    bundle exec rake          # run the specs (RSpec)
+    bundle exec rake rubocop  # check the style (needs Ruby 2.7 or later)
     bin/setup-hooks           # optional: run both before each commit
 
-`bin/setup-hooks` points git at the tracked `hooks/` directory
-(`core.hooksPath`), so the hooks are always the committed versions. That
-setting replaces any global hooks path and any hooks in `.git/hooks`, for
-this repository only. The hook checks the working tree, not just what's
-staged, and skips RuboCop on Ruby 2.6. Skip the hook for one commit with
-`git commit --no-verify`; turn it off with
+`bin/setup-hooks` sets git's `core.hooksPath` to the tracked `hooks/`
+directory, so the hooks you run are always the committed versions. For this
+repository only, that setting overrides any global hooks path and any hooks
+in `.git/hooks`.
+
+The pre-commit hook checks the working tree, not just the staged changes,
+and skips RuboCop on Ruby 2.6. To skip the hook for one commit, use
+`git commit --no-verify`. To turn it off, run
 `git config --unset core.hooksPath`.
 
-CI runs the specs on Ruby 2.6 through 4.0, on Linux and macOS, and
-RuboCop in its own job on Ruby 4.0 (`.github/workflows/ci.yml`).
+CI (`.github/workflows/ci.yml`) runs the specs on Ruby 2.6 through 4.0, on
+Linux and macOS, and runs RuboCop in a separate job on Ruby 4.0.
 
-`ruby script/demo_history.rb` writes a made-up history for screenshots;
-see the comment at its top.
+`ruby script/demo_history.rb` writes an invented history file for taking
+screenshots; see the comment at the top of the script for details.
 
 ## License
 
