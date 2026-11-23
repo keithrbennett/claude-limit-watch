@@ -79,29 +79,7 @@ The panel takes over the whole terminal window, like `less` or `vim`,
 and when you quit, your earlier terminal output is restored. Press **q** or
 Ctrl-C to quit; the recorder keeps running.
 
-      ╔═════════════════════════════════════════════╗
-      ║  ◆  C L A U D E   L I M I T   W A T C H  ◆  ║
-      ╚═════════════════════════════════════════════╝
-
-      Claude's 5-hour usage limit · last reading 01:28 (<1m ago)
-
-      Used   █████████████████████████████████████████████░░░░░   89%
-      Time   ███████████████████████████████████████████░░░░░░░  4h 18m of 5h
-             21:10                                        02:10  now 01:28
-
-      If usage continues at the rate of the last ... (all: since 21:10):
-
-      10m    ███████████████████████████████████████████▒▒▒▒XXX│ limit at 01:49 · 20m locked out
-      30m    ███████████████████████████████████████████▒▒▒XXXX│ limit at 01:47 · 23m locked out
-      1h     ███████████████████████████████████████████▒▒▒▒XXX│ limit at 01:49 · 20m locked out
-      2h     ███████████████████████████████████████████▒▒▒▒▒▒X│ limit at 02:01 · 8m locked out
-      all    ███████████████████████████████████████████▒▒▒▒▒XX│ limit at 01:59 · 10m locked out
-
-             █ time so far · ▒ time left at that rate · X locked out (limit reached) · │ window ends
-      ──────────────────────────────────────────────────────────────────────────────────────────────
-      q to quit · stop the recorder with: claude-limit-watch stop                          now 01:28
-      claude-limit-watch 0.1.0 · https://github.com/keithrbennett/claude-limit-watch
-      Recorder running (pid 4110391), writing to ~/.local/state/claude-limit-watch/history.jsonl
+![The claude-limit-watch panel](docs/images/panel.png)
 
 From top to bottom:
 
