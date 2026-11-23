@@ -25,7 +25,8 @@ Prefer project-local tools and scripts (Rake tasks, `bin/` and `script/`) instea
 - Codex sandbox: workspace write access; network is restricted. Request escalation (`with_escalated_permissions` + short justification) only when indispensable.
 - Codex approval mode is `on-request`: retry failed-but-needed commands with escalation rather than asking the user manually.
 - Codex planning tool: skip for trivial chores; otherwise create a multi-step plan and keep it updated as you work (max one `in_progress` step).
-- Reports and other scratch output an agent writes go in `untracked/` (gitignored; create it if missing) unless the invocation names another location.
+- Prompts in `dev/prompts/` that write reports put them in `untracked/` (gitignored; create it if missing) unless the invocation names another location.
+- For commit reviews, use `dev/prompts/review/review-latest-commit-safe-prompt.md`: it adds this repo's recorder safety rules to the generic `review-latest-commit-prompt.md`.
 - When moving or renaming tracked files, use `git mv` (or `git mv -k`) instead of plain `mv` so history stays intact.
 
 ## Ruby Guidelines
