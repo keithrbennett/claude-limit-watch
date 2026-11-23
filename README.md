@@ -189,11 +189,11 @@ The thresholds are constants at the top of
 
 ## Colors
 
-Colors come from the 256-color palette (green 114, yellow 220, red 196,
+Colors come from the 256-color palette (green 34, yellow 136, red 196,
 dark red 52, lavender 141), because terminal themes often change the 16
 basic colors (showing yellow as orange, for example). The exception is the
 gray used for secondary text: it is the basic "bright black", which themes
-change to their own muted text color, as intended.
+change to their own muted text color.
 
 Set the `NO_COLOR` environment variable to turn colors off.
 

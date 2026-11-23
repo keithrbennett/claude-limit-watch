@@ -7,7 +7,7 @@ module ClaudeLimitWatch
 
     # 256-color codes: terminal themes often remap the 16 basic colors (yellow
     # showing as orange, say), but generally leave these alone.
-    COLORS = { ok: '38;5;114', projected: '38;5;220', urgent: '38;5;196' }.freeze # green, yellow, red
+    COLORS = { ok: '38;5;34', projected: '38;5;136', urgent: '38;5;196' }.freeze # green, yellow, red
     WARN = COLORS[:projected] # warnings: yellow, as for a rate that runs out
     # Secondary text. The one 16-color code, on purpose: themes remap bright
     # black too, but to their own muted text color, which suits this text.

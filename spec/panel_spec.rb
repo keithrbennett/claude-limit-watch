@@ -110,8 +110,8 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     allow(m).to receive_messages(term_width: 120, term_height: nil)
     st = ClaudeLimitWatch::Snapshot.build(worst_records, worst_now, rate_window: 30).merge(recorder_pid: 1234)
     lines = m.lines(st, worst_now)
-    expect(lines).to include(a_string_starting_with("\e[38;5;220m  Last check failed"),
-      a_string_starting_with("\e[38;5;220m  No new readings"),
+    expect(lines).to include(a_string_starting_with("\e[38;5;136m  Last check failed"),
+      a_string_starting_with("\e[38;5;136m  No new readings"),
       a_string_starting_with("\e[90m  q to quit"))
   end
 
@@ -216,6 +216,15 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     row = { label: '10m', eta_at: resets - 60 } # locked out for the last minute only
     bar = plain(m.projection_bar_lines([row], { resets: resets }, 50, NOW)).first[9, 50]
     expect(bar).to match(/\A█+▒+X\z/)
+  end
+
+  it 'shows the time left, and the text of a rate that lasts, in green' do
+    allow($stdout).to receive(:tty?).and_return(true)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+    row = { label: '1h', end_pct: 90.0 } # doesn't reach the limit
+    line = m.projection_bar_lines([row], { resets: NOW + (100 * 60) }, 50, NOW).first
+    expect(line).to include("\e[38;5;34m▒", "\e[38;5;34mlimit not reached · 90% at the end")
   end
 
   it 'shows no projections early in the window' do

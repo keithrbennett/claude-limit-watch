@@ -46,7 +46,7 @@ RSpec.describe ClaudeLimitWatch::LinesView do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
       expect(m.stale_line(NOW, NOW - 900, nil, record: true))
-        .to eq("\e[38;5;220m08:00 | no new readings for 15m. Restart the viewer, or see recorder.log\e[0m")
+        .to eq("\e[38;5;136m08:00 | no new readings for 15m. Restart the viewer, or see recorder.log\e[0m")
     end
 
     it 'adds no hint when there is none' do
