@@ -1,5 +1,44 @@
 # frozen_string_literal: true
 
+# Coverage, in ./coverage, when SimpleCov 1.x is installed (Ruby 3.2 or
+# later). It starts before the library loads, so the library's lines count.
+project_root = File.expand_path('..', __dir__)
+report_dir = File.join(project_root, 'coverage')
+begin
+  require 'simplecov'
+rescue LoadError => e
+  # Expected below Ruby 3.2, where the Gemfile leaves SimpleCov out.
+  if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('3.2')
+    warn "Can't load SimpleCov (#{e.message}); skipping coverage"
+  end
+else
+  # A dangling symlink counts as present: SimpleCov can't create the directory.
+  report_dir_writable =
+    if File.exist?(report_dir) || File.symlink?(report_dir)
+      File.directory?(report_dir) && File.writable?(report_dir)
+    else
+      File.writable?(project_root)
+    end
+  if Gem::Version.new(SimpleCov::VERSION) < Gem::Version.new('1.0')
+    # Possible outside Bundler; this setup needs 1.x.
+    warn "SimpleCov #{SimpleCov::VERSION} is older than 1.0; skipping coverage"
+  elsif !report_dir_writable
+    # Writing the report would fail at exit and fail the run.
+    warn "Can't write the coverage report to #{report_dir}; skipping coverage"
+  else
+    SimpleCov.start do
+      enable_coverage :branch
+      # From any working directory, measure this project and report here.
+      root project_root
+      coverage_dir report_dir
+      # Report only lib/, including files no spec loads.
+      cover 'lib/**/*.rb'
+      # The gemspec loads it before SimpleCov starts, so it would show 0%.
+      skip 'lib/claude_limit_watch/version.rb'
+    end
+  end
+end
+
 require 'tmpdir'
 require 'fileutils'
 

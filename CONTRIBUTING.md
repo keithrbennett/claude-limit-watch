@@ -104,7 +104,7 @@ bundle exec rspec
 
 Useful commands and entry points include:
 
-- `bundle exec rspec` — run the test suite
+- `bundle exec rspec` — run the test suite; on Ruby 3.2 or later it also writes a SimpleCov line and branch coverage report to `coverage/` (`index.html` and `coverage.json`, which [cov-loupe](https://github.com/keithrbennett/cov-loupe) reads)
 - `bundle exec rubocop` — run static analysis and style checks
 - `bundle exec rake` — run the default Rake task (the test suite); `bundle exec rake rubocop` runs RuboCop
 - `bin/setup-hooks` — optionally install the pre-commit hook, which runs the specs and RuboCop before each commit

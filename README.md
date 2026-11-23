@@ -357,6 +357,12 @@ and skips RuboCop on Ruby 2.6. To skip the hook for one commit, use
 `git commit --no-verify`. To turn it off, run
 `git config --unset core.hooksPath`.
 
+On Ruby 3.2 or later, the specs also write a SimpleCov line and branch
+coverage report to `coverage/` (gitignored): `index.html`, and
+`coverage.json` for [cov-loupe](https://github.com/keithrbennett/cov-loupe).
+They skip it, with a warning, if SimpleCov can't be loaded or is older
+than 1.0, or if `coverage/` can't be written.
+
 CI (`.github/workflows/ci.yml`) runs the specs on Ruby 2.6 through 4.0, on
 Linux and macOS, and runs RuboCop in a separate job on Ruby 4.0.
 

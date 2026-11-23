@@ -1,6 +1,7 @@
 /agent-council-reports/
 /.bundle/
 /.claude/
+/coverage
 /*.gem
 Gemfile.lock
 /.idea/

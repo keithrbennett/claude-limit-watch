@@ -83,6 +83,8 @@ bundle exec rake rubocop
 ```
 Use `bundle exec rspec spec/panel_spec.rb` to target specific specs when needed.
 
+On Ruby 3.2 or later (SimpleCov 1.x's minimum), the specs also write coverage to `coverage/` (gitignored), including `coverage.json` for the cov-loupe MCP tools; they skip it, with a warning, if SimpleCov can't be loaded or is older than 1.0, or if `coverage/` can't be written. On older Rubies they run without coverage.
+
 ### Manual Testing
 Follow the safety rules above. For example:
 ```sh
