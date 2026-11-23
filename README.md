@@ -334,6 +334,12 @@ will start a recorder running the new version.
   token may have expired. The recorder logs an error for each check until
   Claude Code refreshes the token.
 
+## Contributing
+
+Bug reports and suggestions are welcome. Please open an issue and get
+approval before submitting a pull request; see
+[CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ## Development
 
     bundle install
