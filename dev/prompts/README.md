@@ -6,14 +6,16 @@ example, "Follow dev/prompts/review/release-review.md"), or run by
 agent-council.
 
 Every prompt here that runs commands, except the generic
-review-latest-commit prompt, has the agent read and follow the two safety
-sections of [AGENTS.md](../../AGENTS.md) first: never start a recorder or
-touch the real history file, and never install anything, change git state,
-or release. Review and validate prompts change no tracked files and give
-their report in the agent's final message (Verify Code Changes and State of
-the Code Base also save it to `untracked/`, which is gitignored). The
-improve prompt edits documentation, then proposes a commit for the user to
-run.
+review-latest-commit prompt, carries the two safety sections of
+[AGENTS.md](../../AGENTS.md): the safe review prompt keeps a full copy of
+its own, and the others have the agent read them first and restate their
+key points. Above all: never start a recorder or touch the real history
+file, and never install anything, change git state, or release.
+
+Review and validate prompts change no tracked files and give their report
+in the agent's final message (Verify Code Changes and State of the Code
+Base also save it to `untracked/`, which is gitignored). The improve
+prompt edits documentation, then proposes a commit for the user to run.
 
 ## Review
 

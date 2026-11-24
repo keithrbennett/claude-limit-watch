@@ -16,11 +16,14 @@ pushing, and `gem push` stay manual (`gem push` asks for an MFA code).
 - [ ] Optionally, have an agent follow
   [dev/prompts/review/release-review.md](../../dev/prompts/review/release-review.md)
   for a checklist of what's left.
-- [ ] Run the checks locally (the pre-commit hook runs both):
+- [ ] Run the checks locally (the pre-commit hook runs the first two; the
+  link check needs Docker, and CI runs it too):
 
 ```sh
 bundle exec rubocop
 bundle exec rspec
+docker run --rm -v "$PWD":/input:ro -w /input lycheeverse/lychee:0.24.2 \
+  --offline --include-fragments --no-progress --extensions md .
 ```
 
 ## 2. Commit and push

@@ -367,7 +367,13 @@ To release, follow [docs/dev/RELEASING.md](docs/dev/RELEASING.md), which
 uses `bin/pre-release-check`.
 
 CI (`.github/workflows/ci.yml`) runs the specs on Ruby 2.6 through 4.0, on
-Linux and macOS, and runs RuboCop in a separate job on Ruby 4.0.
+Linux and macOS, runs RuboCop in a separate job on Ruby 4.0, and checks the
+Markdown files' relative links and anchors with
+[lychee](https://github.com/lycheeverse/lychee). To run that check locally,
+with Docker:
+
+    docker run --rm -v "$PWD":/input:ro -w /input lycheeverse/lychee:0.24.2 \
+      --offline --include-fragments --no-progress --extensions md .
 
 `ruby script/demo_history.rb` writes an invented history file for taking
 screenshots; see the comment at the top of the script for details.

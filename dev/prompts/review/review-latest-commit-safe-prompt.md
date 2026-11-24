@@ -31,13 +31,15 @@ previous review killed the recorder. Follow these rules strictly:
   lock.
 - **Never read from or write to the state directory** (either location
   above). Don't modify, delete or lock anything there.
-- **Give every `exe/claude-limit-watch` run a history file under a
-  scratch directory,** with `--file "${TMPDIR:-/tmp}/<dir>/history.jsonl"`.
-  (`$TMPDIR` is often unset on Linux; without the `:-/tmp` fallback the
-  path would land at the filesystem root.) Do this for every command,
-  every time. Changing or unsetting `HOME` or
-  `XDG_STATE_HOME` instead is not a substitute: without `--file`, a run
-  can still reach the real history file and its recorder.
+- **Give every `exe/claude-limit-watch` run but `--help` and `--version`
+  a history file under a scratch directory,** with
+  `--file "${TMPDIR:-/tmp}/<dir>/history.jsonl"`. (`$TMPDIR` is often
+  unset on Linux; without the `:-/tmp` fallback the path would land at the
+  filesystem root.) Do this for every other command, every time.
+  (`--help` and `--version` print and exit before touching any file.)
+  Changing or unsetting `HOME` or `XDG_STATE_HOME` instead is not a
+  substitute: without `--file`, a run can still reach the real history
+  file and its recorder.
 - **Never start a recorder, even briefly or under `timeout`.** A recorder
   calls the real usage API with the user's OAuth token, so even one on a
   temporary file adds to the user's rate limit, and `timeout` doesn't
@@ -46,13 +48,14 @@ previous review killed the recorder. Follow these rules strictly:
   `timeout`. So never run:
   - `record`, in any form.
   - The viewer without `--once` or `--no-record`. That includes `--lines`
-    and output to a pipe, which start a recorder too.
+    and output to a pipe (unless with `--once`), which start a recorder
+    too.
   - In-process code (`ruby -e`, a script) that calls `Recorder.run`,
     `Recorder.start`, `Recorder.ensure_running`, `Recorder.stop` or
     `UsageApi.fetch_five_hour` without stubbing them. Calling functions
     that only compute or format, such as `Recorder.stop_command`, is fine.
 - **These runs are fine,** with the history file in a scratch directory
-  as above:
+  as above (except `--help` and `--version`, which need none):
   - `--help`, `--version`, and runs with invalid arguments.
   - `--once` (prints the panel and exits; it never starts a recorder).
   - The viewer with `--no-record`, under `timeout`, for example
@@ -65,9 +68,11 @@ previous review killed the recorder. Follow these rules strictly:
   they still do both.
 - **If you start a process anyway, stop it yourself by its pid,** and say
   so in your report.
-- **Change nothing outside your scratch directory:** never install
-  anything (`gem install`, `bundle install`), change git state or config,
-  run `bin/setup-hooks` or `bin/pre-release-check`, or release. See
+- **Write only to your scratch directory and to files the tools write
+  themselves** (such as `coverage/` and RuboCop's cache): never install
+  anything (`gem install`, `bundle install`), change git state or config
+  (reading and `git fetch` are fine), run `bin/setup-hooks` or
+  `bin/pre-release-check`, or release. See
   "Safety: the Host and the Repository" in AGENTS.md. A previous review
   overwrote the user's installed `agent-council` executable by installing
   a test gem.

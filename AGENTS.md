@@ -63,7 +63,7 @@ The user runs a long-lived background recorder writing to the state directory: `
 - **Give every other `exe/claude-limit-watch` run a history file under a scratch directory**, with `--file "${TMPDIR:-/tmp}/<dir>/history.jsonl"`, every time. Only `--help` and `--version` may run without one: they print and exit before touching any file, and `--help` then shows the real default path. (`$TMPDIR` is often unset on Linux; without the `:-/tmp` fallback the path would land at the filesystem root.) Changing or unsetting `HOME` or `XDG_STATE_HOME` instead is not a substitute.
 - **Never start a recorder, even briefly or under `timeout`.** A recorder calls the real usage API with the user's OAuth token, adding to the user's rate limit, and the viewer starts it detached (`nohup`, own process group), so it outlives the viewer and any `timeout`. So never run:
   - `record`, in any form.
-  - The viewer without `--once` or `--no-record` (including `--lines` and output to a pipe).
+  - The viewer without `--once` or `--no-record` (including `--lines` and output to a pipe, unless with `--once`).
   - In-process code that calls `Recorder.run`, `Recorder.start`, `Recorder.ensure_running`, `Recorder.stop`, or `UsageApi.fetch_five_hour` without stubbing them. Functions that only compute or format are fine.
 - **These runs are fine** (with the history file in a scratch directory, except for `--help` and `--version`): `--help`, `--version`, invalid arguments, `--once`, and the viewer with `--no-record` under `timeout`.
 - **Specs isolate themselves**: they use a temporary history file and stub `Process.spawn`/`Process.kill`. If you change how the specs run, confirm they still do both.
@@ -71,10 +71,10 @@ The user runs a long-lived background recorder writing to the state directory: `
 
 ## Safety: the Host and the Repository
 
-When reviewing or verifying (including when following a prompt in `dev/prompts/`), change nothing outside your own scratch directory. (When making a change the maintainer asked for, `bundle install` for gems the change adds to the `Gemfile` is fine; the rest still applies.) An agent review once overwrote the user's installed `agent-council` executable by installing a test gem.
+These rules always apply; only the exceptions noted in them are for changes the maintainer asked for. When reviewing or verifying, including when following a prompt in `dev/prompts/`, also create, modify, or delete nothing except your scratch directory, reports in `untracked/`, files the tools write themselves (such as `coverage/` and RuboCop's cache), and, for a prompt that says to edit documentation, those files. An agent review once overwrote the user's installed `agent-council` executable by installing a test gem.
 
-- **Never install anything:** no `gem install`, no `bundle install`, no package managers. If something is missing, say so instead.
-- **Never change git state or config:** no `git config`, `checkout`, `switch`, `add`, `commit`, `stash`, `reset`, `tag`, or `push`. Reading (`status`, `diff`, `log`, `show`) and `git fetch` are fine.
+- **Never install anything:** no `gem install`, no `bundle install`, no package managers. If something is missing, say so instead. (When making a change the maintainer asked for, `bundle install` for gems the change adds to the `Gemfile` is fine.)
+- **Never change git state or config:** no `git config`, `checkout`, `switch`, `add`, `commit`, `stash`, `reset`, `tag`, or `push`. Reading (`status`, `diff`, `log`, `show`) and `git fetch` are fine. (When making a change the maintainer asked for, `git mv` is fine, as the Environment section says; committing never is.)
 - **Never run `bin/setup-hooks`** (it sets `core.hooksPath`) **or `bin/pre-release-check`** (it builds a gem and installs it into a scratch directory; its specs fake every command).
 - **Never publish or release:** no `gem push`, `gem build` in the checkout, or `rake build`/`rake release`.
 
@@ -91,6 +91,8 @@ bundle exec rake
 bundle exec rake rubocop
 ```
 Use `bundle exec rspec spec/panel_spec.rb` to target specific specs when needed.
+
+CI also checks the Markdown files' relative links and anchors with lychee (the README's Development section has the local Docker command). After moving or renaming a Markdown file or heading, search for links to it.
 
 On Ruby 3.2 or later (SimpleCov 1.x's minimum), the specs also write coverage to `coverage/` (gitignored), including `coverage.json` for the cov-loupe MCP tools; they skip it, with a warning, if SimpleCov can't be loaded or is older than 1.0, or if `coverage/` can't be written. On older Rubies they run without coverage.
 

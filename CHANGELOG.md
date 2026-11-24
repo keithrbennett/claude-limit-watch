@@ -10,6 +10,8 @@
   `docs/dev/RELEASING.md`.
 - Development: prompts for AI agents in `dev/prompts/` (documentation,
   release, and code reviews), listed in `dev/prompts/README.md`.
+- Development: CI checks the Markdown files' relative links and anchors,
+  with lychee.
 
 ## 0.1.0 (2026-11-23)
 

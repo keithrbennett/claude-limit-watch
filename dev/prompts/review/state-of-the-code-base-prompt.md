@@ -169,7 +169,8 @@ Show the weights table and the calculation (score × weight for each dimension, 
 - **Safety overrides the ground rules above.** Before running any command, read AGENTS.md's "Safety: the
   Recorder and the Real History File" and "Safety: the Host and the Repository" sections, and follow them
   strictly. Above all, never start a recorder (run the viewer only with `--once`, or with `--no-record` under
-  `timeout`), and give every run but `--help` and `--version` a scratch history file.
+  `timeout`), and give every run but `--help` and `--version` a scratch history file. Never install anything,
+  change git state or config (reading and `git fetch` are fine), or release.
 - `bundle exec rubocop` (add `--cache false` in a sandbox) and `bundle exec rspec` are safe to run. On Ruby
   3.2 or later the specs write `coverage/coverage.json`; you may cite it, but don't score coverage on its own.
 - claude-limit-watch is a small Ruby gem with one executable in two roles (a recorder and a viewer), no

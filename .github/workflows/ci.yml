@@ -25,6 +25,23 @@ jobs:
           bundler-cache: true
       - run: bundle exec rake rubocop
 
+  links:
+    name: Markdown links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Relative links and #anchors only (--offline). Passing the directory,
+      # not a glob, makes lychee walk it, skipping gitignored files; a glob
+      # would be re-expanded by the action's shell. Keep the version and
+      # args in step with the local command in the README's Development
+      # section and docs/dev/RELEASING.md (Dependabot doesn't update them).
+      # The action takes the version with a leading "v"; the Docker image
+      # tag has none.
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          lycheeVersion: v0.24.2
+          args: --offline --include-fragments --no-progress --extensions md .
+
   spec:
     name: Ruby ${{ matrix.ruby }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

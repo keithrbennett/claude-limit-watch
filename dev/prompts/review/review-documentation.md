@@ -73,7 +73,7 @@ anything in this prompt:
   under `timeout`), and give every run but `--help` and `--version` a
   scratch history file.
 - "Safety: the Host and the Repository": never install anything, change git
-  state or config, or release.
+  state or config (reading and `git fetch` are fine), or release.
 
 The README's own examples break these rules on purpose (they're for
 users), so adapt them before running them, or check them by reading.

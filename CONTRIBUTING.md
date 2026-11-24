@@ -109,6 +109,7 @@ Useful commands and entry points include:
 - `bundle exec rake` — run the default Rake task (the test suite); `bundle exec rake rubocop` runs RuboCop
 - `dev/prompts/` — prompts for AI agents (reviews, documentation, releases); see [dev/prompts/README.md](dev/prompts/README.md)
 - `bin/pre-release-check` — check that `main` is ready to release, then build and smoke-test the gem (maintainers; see [docs/dev/RELEASING.md](docs/dev/RELEASING.md))
+- `.github/workflows/ci.yml` — CI: the specs, RuboCop, and a lychee check of the Markdown files' relative links and anchors (the README's Development section shows how to run that check locally)
 - `bin/setup-hooks` — optionally install the pre-commit hook, which runs the specs and RuboCop before each commit
 - `exe/claude-limit-watch` — run the CLI for end-to-end testing
 - `ruby script/demo_history.rb` — write a made-up history file for trying the panel without real usage data (see the comment at the top of the script)
