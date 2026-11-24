@@ -33,9 +33,10 @@ Examine all tracked Markdown files at the repository root (`*.md`) and in
 Exceptions:
 
 - `RELEASE_NOTES.md`: each released section describes that release as it
-  shipped. Fix typos and broken links only; update only the
-  `## X.Y.Z (unreleased)` section for current changes, adding one with
-  the next version if there is none.
+  shipped. Don't change what a released section says; fixing typos and
+  broken links, and rewording or reformatting for readability, are fine.
+  Add current changes only to the `## X.Y.Z (unreleased)` section,
+  adding one with the next version if there is none.
 - The prompts in `dev/prompts/` (other than the index) are not
   documentation; leave them alone unless they reference something that no
   longer exists.

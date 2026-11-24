@@ -7,7 +7,7 @@ RSpec.describe PreReleaseCheck do
   let(:err) { StringIO.new }
   let(:head) { 'a' * 40 }
   let(:other) { 'b' * 40 }
-  let(:changelog) { "# Release Notes\n\n## 1.2.0 (2027-01-15)\n\n- A change.\n" }
+  let(:release_notes) { "# Release Notes\n\n## 1.2.0 (2027-01-15)\n\n- A change.\n" }
   let(:passed) do
     { 'databaseId' => 7, 'status' => 'completed', 'conclusion' => 'success', 'event' => 'push' }
   end
@@ -46,7 +46,7 @@ RSpec.describe PreReleaseCheck do
   before do
     allow(File).to receive(:read).and_call_original
     allow(File).to receive(:read).with(end_with('version.rb')).and_return("  VERSION = '1.2.0'\n")
-    allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md')).and_return(changelog)
+    allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md')).and_return(release_notes)
     allow(FileUtils).to receive(:rm_f)
     allow(File).to receive(:exist?).and_call_original
     allow(File).to receive(:exist?).with('claude-limit-watch-1.2.0.gem').and_return(true)
@@ -124,6 +124,8 @@ RSpec.describe PreReleaseCheck do
     ['a section without a date', "## 1.2.0\n", "Add a '## 1.2.0 (YYYY-MM-DD)' section"],
     ['the version still unreleased', "## 1.2.0 (unreleased)\n",
       "Change '## 1.2.0 (unreleased)' to '## 1.2.0 (YYYY-MM-DD)'"],
+    ['entries under another version', "## 1.1.1 (unreleased)\n\n- New.\n",
+      "section to RELEASE_NOTES.md. Entries are under '## 1.1.1 (unreleased)'."],
   ].each do |situation, text, message|
     it "fails when the release notes have #{situation}" do
       allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md')).and_return(text)
@@ -132,11 +134,14 @@ RSpec.describe PreReleaseCheck do
     end
   end
 
-  it 'warns about entries under an unreleased version' do
-    allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md'))
-      .and_return("## 1.3.0 (unreleased)\n\n- Forgotten.\n\n## 1.2.0 (2027-01-15)\n")
-    expect(checker.call).to be(true)
-    expect(err.string).to include("has entries under '## 1.3.0 (unreleased)'")
+  # The bare "## Unreleased" is the old form, and the form other projects use.
+  ['## 1.3.0 (unreleased)', '## 1.3.0 (Unreleased)', '## Unreleased'].each do |heading|
+    it "warns about entries under '#{heading}'" do
+      allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md'))
+        .and_return("#{heading} \n\n- Forgotten.\n\n## 1.2.0 (2027-01-15)\n")
+      expect(checker.call).to be(true)
+      expect(err.string).to include("has entries under '#{heading}'; check whether they belong in 1.2.0.")
+    end
   end
 
   it 'does not warn about an empty unreleased section' do

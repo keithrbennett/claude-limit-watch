@@ -56,7 +56,7 @@ class PreReleaseCheck
     check('In sync with origin/main') { verify_sync }
     @version = read_version
     @tag = "v#{@version}"
-    check("Version #{@version} is in RELEASE_NOTES.md") { verify_changelog }
+    check("Version #{@version} is in RELEASE_NOTES.md") { verify_release_notes }
     check("Tag #{@tag} doesn't exist yet") { verify_tag_new }
     check("CI passed for #{@head[0, 7]}") { verify_ci }
     check("Built #{gem_file}") { build_gem }
@@ -114,22 +114,30 @@ class PreReleaseCheck
     versions.first
   end
 
-  private def verify_changelog
-    changelog = File.read(File.join(ROOT, 'RELEASE_NOTES.md'))
+  private def verify_release_notes
+    release_notes = File.read(File.join(ROOT, 'RELEASE_NOTES.md'))
     heading = "## #{@version}"
-    unless changelog.match?(/^#{Regexp.escape(heading)} \(\d{4}-\d{2}-\d{2}\)$/)
-      if changelog.match?(/^#{Regexp.escape(heading)} \(unreleased\)$/)
+    pending = pending_headings(release_notes)
+    unless release_notes.match?(/^#{Regexp.escape(heading)} \(\d{4}-\d{2}-\d{2}\)$/)
+      if release_notes.match?(/^#{Regexp.escape(heading)} \(unreleased\)[ \t]*$/i)
         fail!("Change '#{heading} (unreleased)' to '#{heading} (YYYY-MM-DD)' in RELEASE_NOTES.md.")
       end
-      fail!("Add a '#{heading} (YYYY-MM-DD)' section to RELEASE_NOTES.md.")
+      hint = pending.empty? ? '' : " Entries are under #{pending.map { |h| "'#{h}'" }.join(', ')}."
+      fail!("Add a '#{heading} (YYYY-MM-DD)' section to RELEASE_NOTES.md.#{hint}")
     end
 
-    changelog.scan(/^## (\S+) \(unreleased\)\n(.*?)(?=^## |\z)/m) do |version, entries|
-      next if entries.strip.empty?
-
-      @notes << "RELEASE_NOTES.md has entries under '## #{version} (unreleased)'; " \
+    pending.each do |pending_heading|
+      @notes << "RELEASE_NOTES.md has entries under '#{pending_heading}'; " \
                 "check whether they belong in #{@version}."
     end
+  end
+
+  # The "## " headings that say unreleased, in any case (including the old
+  # bare "## Unreleased"), with entries under them.
+  private def pending_headings(release_notes)
+    release_notes.scan(/^(## [^\n]*\bunreleased\b[^\n]*?)[ \t]*\n(.*?)(?=^## |\z)/mi)
+      .reject { |_, entries| entries.strip.empty? }
+      .map(&:first)
   end
 
   private def verify_tag_new
