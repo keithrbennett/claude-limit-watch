@@ -71,12 +71,19 @@ The user runs a long-lived background recorder writing to the state directory: `
 
 ## Safety: the Host and the Repository
 
-These rules always apply; only the exceptions noted in them are for changes the maintainer asked for. When reviewing or verifying, including when following a prompt in `dev/prompts/`, also create, modify, or delete nothing except your scratch directory, reports in `untracked/`, files the tools write themselves (such as `coverage/` and RuboCop's cache), and, for a prompt that says to edit documentation, those files. An agent review once overwrote the user's installed `agent-council` executable by installing a test gem.
+An agent review once overwrote the user's installed `agent-council` executable by installing a test gem. These rules always apply, apart from the exceptions noted in them, which are only for changes the maintainer asked for.
 
 - **Never install anything:** no `gem install`, no `bundle install`, no package managers. If something is missing, say so instead. (When making a change the maintainer asked for, `bundle install` for gems the change adds to the `Gemfile` is fine.)
 - **Never change git state or config:** no `git config`, `checkout`, `switch`, `add`, `commit`, `stash`, `reset`, `tag`, or `push`. Reading (`status`, `diff`, `log`, `show`) and `git fetch` are fine. (When making a change the maintainer asked for, `git mv` is fine, as the Environment section says; committing never is.)
 - **Never run `bin/setup-hooks`** (it sets `core.hooksPath`) **or `bin/pre-release-check`** (it builds a gem and installs it into a scratch directory; its specs fake every command).
 - **Never publish or release:** no `gem push`, `gem build` in the checkout, or `rake build`/`rake release`.
+
+**When reviewing or verifying** (including when following a prompt in `dev/prompts/`), don't create, change, or delete any files except:
+
+- your scratch directory;
+- reports in `untracked/`;
+- files the tools write themselves, such as `coverage/` and RuboCop's cache;
+- documentation files, when the prompt says to edit them.
 
 ## Building, Running, and Testing
 
