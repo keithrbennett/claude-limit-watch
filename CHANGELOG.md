@@ -8,6 +8,8 @@
   weekly.
 - Development: `bin/pre-release-check` and a release checklist,
   `docs/dev/RELEASING.md`.
+- Development: prompts for AI agents in `dev/prompts/` (documentation,
+  release, and code reviews), listed in `dev/prompts/README.md`.
 
 ## 0.1.0 (2026-11-23)
 

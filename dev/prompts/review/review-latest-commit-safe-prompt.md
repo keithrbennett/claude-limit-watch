@@ -65,6 +65,12 @@ previous review killed the recorder. Follow these rules strictly:
   they still do both.
 - **If you start a process anyway, stop it yourself by its pid,** and say
   so in your report.
+- **Change nothing outside your scratch directory:** never install
+  anything (`gem install`, `bundle install`), change git state or config,
+  run `bin/setup-hooks` or `bin/pre-release-check`, or release. See
+  "Safety: the Host and the Repository" in AGENTS.md. A previous review
+  overwrote the user's installed `agent-council` executable by installing
+  a test gem.
 
 ## Scope
 

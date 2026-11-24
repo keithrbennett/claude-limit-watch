@@ -13,6 +13,9 @@ pushing, and `gem push` stay manual (`gem push` asks for an MFA code).
   and add a new, empty `## Unreleased` above it. Make sure every
   user-visible change is listed.
 - [ ] Check that the README's usage, options, and screenshot are current.
+- [ ] Optionally, have an agent follow
+  [dev/prompts/review/release-review.md](../../dev/prompts/review/release-review.md)
+  for a checklist of what's left.
 - [ ] Run the checks locally (the pre-commit hook runs both):
 
 ```sh

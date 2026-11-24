@@ -107,6 +107,7 @@ Useful commands and entry points include:
 - `bundle exec rspec` — run the test suite; on Ruby 3.2 or later it also writes a SimpleCov line and branch coverage report to `coverage/` (`index.html` and `coverage.json`, which [cov-loupe](https://github.com/keithrbennett/cov-loupe) reads)
 - `bundle exec rubocop` — run static analysis and style checks
 - `bundle exec rake` — run the default Rake task (the test suite); `bundle exec rake rubocop` runs RuboCop
+- `dev/prompts/` — prompts for AI agents (reviews, documentation, releases); see [dev/prompts/README.md](dev/prompts/README.md)
 - `bin/pre-release-check` — check that `main` is ready to release, then build and smoke-test the gem (maintainers; see [docs/dev/RELEASING.md](docs/dev/RELEASING.md))
 - `bin/setup-hooks` — optionally install the pre-commit hook, which runs the specs and RuboCop before each commit
 - `exe/claude-limit-watch` — run the CLI for end-to-end testing

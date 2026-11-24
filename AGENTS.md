@@ -25,7 +25,7 @@ Prefer project-local tools and scripts (Rake tasks, `bin/` and `script/`) instea
 - Codex sandbox: workspace write access; network is restricted. Request escalation (`with_escalated_permissions` + short justification) only when indispensable.
 - Codex approval mode is `on-request`: retry failed-but-needed commands with escalation rather than asking the user manually.
 - Codex planning tool: skip for trivial chores; otherwise create a multi-step plan and keep it updated as you work (max one `in_progress` step).
-- Prompts in `dev/prompts/` that write reports put them in `untracked/` (gitignored; create it if missing) unless the invocation names another location.
+- `dev/prompts/README.md` lists the prompts in `dev/prompts/` (reviews, documentation, releases). Those that write reports put them in `untracked/` (gitignored; create it if missing) unless the invocation names another location.
 - For commit reviews, use `dev/prompts/review/review-latest-commit-safe-prompt.md`: it adds this repo's recorder safety rules to the generic `review-latest-commit-prompt.md`.
 - When moving or renaming tracked files, use `git mv` (or `git mv -k`) instead of plain `mv` so history stays intact.
 
@@ -60,14 +60,23 @@ The user runs a long-lived background recorder writing to the state directory: `
 
 - **Never send a signal to a process you did not start yourself.** No `kill`, `pkill`, or `killall` on anything else, and no `claude-limit-watch stop`, which signals whatever recorder holds the lock.
 - **Never read from or write to the state directory** (either location above). Don't modify, delete, or lock anything there.
-- **Give every `exe/claude-limit-watch` run a history file under a scratch directory**, with `--file "${TMPDIR:-/tmp}/<dir>/history.jsonl"`, every time. (`$TMPDIR` is often unset on Linux; without the `:-/tmp` fallback the path would land at the filesystem root.) Changing or unsetting `HOME` or `XDG_STATE_HOME` instead is not a substitute.
+- **Give every other `exe/claude-limit-watch` run a history file under a scratch directory**, with `--file "${TMPDIR:-/tmp}/<dir>/history.jsonl"`, every time. Only `--help` and `--version` may run without one: they print and exit before touching any file, and `--help` then shows the real default path. (`$TMPDIR` is often unset on Linux; without the `:-/tmp` fallback the path would land at the filesystem root.) Changing or unsetting `HOME` or `XDG_STATE_HOME` instead is not a substitute.
 - **Never start a recorder, even briefly or under `timeout`.** A recorder calls the real usage API with the user's OAuth token, adding to the user's rate limit, and the viewer starts it detached (`nohup`, own process group), so it outlives the viewer and any `timeout`. So never run:
   - `record`, in any form.
   - The viewer without `--once` or `--no-record` (including `--lines` and output to a pipe).
   - In-process code that calls `Recorder.run`, `Recorder.start`, `Recorder.ensure_running`, `Recorder.stop`, or `UsageApi.fetch_five_hour` without stubbing them. Functions that only compute or format are fine.
-- **These runs are fine** (with the history file in a scratch directory): `--help`, `--version`, invalid arguments, `--once`, and the viewer with `--no-record` under `timeout`.
+- **These runs are fine** (with the history file in a scratch directory, except for `--help` and `--version`): `--help`, `--version`, invalid arguments, `--once`, and the viewer with `--no-record` under `timeout`.
 - **Specs isolate themselves**: they use a temporary history file and stub `Process.spawn`/`Process.kill`. If you change how the specs run, confirm they still do both.
 - **If you start a process anyway, stop it yourself by its pid,** and tell the user.
+
+## Safety: the Host and the Repository
+
+When reviewing or verifying (including when following a prompt in `dev/prompts/`), change nothing outside your own scratch directory. (When making a change the maintainer asked for, `bundle install` for gems the change adds to the `Gemfile` is fine; the rest still applies.) An agent review once overwrote the user's installed `agent-council` executable by installing a test gem.
+
+- **Never install anything:** no `gem install`, no `bundle install`, no package managers. If something is missing, say so instead.
+- **Never change git state or config:** no `git config`, `checkout`, `switch`, `add`, `commit`, `stash`, `reset`, `tag`, or `push`. Reading (`status`, `diff`, `log`, `show`) and `git fetch` are fine.
+- **Never run `bin/setup-hooks`** (it sets `core.hooksPath`) **or `bin/pre-release-check`** (it builds a gem and installs it into a scratch directory; its specs fake every command).
+- **Never publish or release:** no `gem push`, `gem build` in the checkout, or `rake build`/`rake release`.
 
 ## Building, Running, and Testing
 
@@ -168,6 +177,7 @@ bundle exec rubocop --cache false
 - `CHANGELOG.md` – changes by release.
 - `CONTRIBUTING.md` – contribution process and development setup.
 - `CODE_OF_CONDUCT.md` – the code of conduct.
+- `dev/prompts/README.md` – the index of agent prompts.
 - `docs/dev/RELEASING.md` – the release checklist, with `bin/pre-release-check` (its code is `script/pre_release_check.rb`, specced in `spec/pre_release_check_spec.rb`). `bin/pre-release-check` is for the maintainer: don't run it (it fetches from origin, builds a gem, and installs it into a scratch directory); its specs fake every command.
 - `AGENTS.md` (this file) and `CLAUDE.md` (a pointer to it) – agent instructions.
 - `docs/images/panel.png` – the README's panel screenshot, taken from the demo history written by `script/demo_history.rb`.
