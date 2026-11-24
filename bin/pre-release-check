@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Checks that main is ready to release, builds the gem once, and smoke-tests
+# it. See docs/dev/RELEASING.md.
+
+require_relative '../script/pre_release_check'
+
+$stdout.sync = true # keeps ✓ lines and warnings (stderr) in order
+abort 'Usage: bin/pre-release-check' unless ARGV.empty?
+exit PreReleaseCheck.new.call

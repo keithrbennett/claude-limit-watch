@@ -363,6 +363,9 @@ coverage report to `coverage/` (gitignored): `index.html`, and
 They skip it, with a warning, if SimpleCov can't be loaded or is older
 than 1.0, or if `coverage/` can't be written.
 
+To release, follow [docs/dev/RELEASING.md](docs/dev/RELEASING.md), which
+uses `bin/pre-release-check`.
+
 CI (`.github/workflows/ci.yml`) runs the specs on Ruby 2.6 through 4.0, on
 Linux and macOS, and runs RuboCop in a separate job on Ruby 4.0.
 

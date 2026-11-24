@@ -6,6 +6,8 @@
   on Ruby 3.2 or later.
 - Development: Dependabot checks the development gems and CI actions
   weekly.
+- Development: `bin/pre-release-check` and a release checklist,
+  `docs/dev/RELEASING.md`.
 
 ## 0.1.0 (2026-11-23)
 

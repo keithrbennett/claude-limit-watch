@@ -168,6 +168,7 @@ bundle exec rubocop --cache false
 - `CHANGELOG.md` – changes by release.
 - `CONTRIBUTING.md` – contribution process and development setup.
 - `CODE_OF_CONDUCT.md` – the code of conduct.
+- `docs/dev/RELEASING.md` – the release checklist, with `bin/pre-release-check` (its code is `script/pre_release_check.rb`, specced in `spec/pre_release_check_spec.rb`). `bin/pre-release-check` is for the maintainer: don't run it (it fetches from origin, builds a gem, and installs it into a scratch directory); its specs fake every command.
 - `AGENTS.md` (this file) and `CLAUDE.md` (a pointer to it) – agent instructions.
 - `docs/images/panel.png` – the README's panel screenshot, taken from the demo history written by `script/demo_history.rb`.
 
