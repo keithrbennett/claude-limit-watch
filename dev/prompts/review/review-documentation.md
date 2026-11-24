@@ -111,7 +111,7 @@ Give the report in your final message; don't write a file unless asked.
 
 - Read [AGENTS.md](../../../AGENTS.md) first, and do not report the
   intentional decisions it describes.
-- `CHANGELOG.md` describes each release as it shipped. Report only errors
+- `RELEASE_NOTES.md` describes each release as it shipped. Report only errors
   about its own release, not omissions of later changes.
 - Prompts under `dev/prompts/` are in scope only for accuracy of the
   commands, paths, and tool names they reference.

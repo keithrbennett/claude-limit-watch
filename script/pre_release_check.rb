@@ -2,7 +2,7 @@
 
 # The release preflight, run by bin/pre-release-check (see
 # docs/dev/RELEASING.md). Adapted from cov-loupe's, scaled down: it checks
-# that main is clean, pushed, versioned, in the CHANGELOG, untagged, and
+# that main is clean, pushed, versioned, in the release notes, untagged, and
 # green in CI, then builds the gem once, smoke-tests it in a scratch gem
 # directory, and prints the commands that finish the release. It never tags,
 # pushes, or publishes.
@@ -56,7 +56,7 @@ class PreReleaseCheck
     check('In sync with origin/main') { verify_sync }
     @version = read_version
     @tag = "v#{@version}"
-    check("Version #{@version} is in CHANGELOG.md") { verify_changelog }
+    check("Version #{@version} is in RELEASE_NOTES.md") { verify_changelog }
     check("Tag #{@tag} doesn't exist yet") { verify_tag_new }
     check("CI passed for #{@head[0, 7]}") { verify_ci }
     check("Built #{gem_file}") { build_gem }
@@ -115,20 +115,21 @@ class PreReleaseCheck
   end
 
   private def verify_changelog
-    changelog = File.read(File.join(ROOT, 'CHANGELOG.md'))
-    unless changelog.match?(/^## #{Regexp.escape(@version)} \(\d{4}-\d{2}-\d{2}\)$/)
-      fail!("Add a '## #{@version} (YYYY-MM-DD)' section to CHANGELOG.md.")
+    changelog = File.read(File.join(ROOT, 'RELEASE_NOTES.md'))
+    heading = "## #{@version}"
+    unless changelog.match?(/^#{Regexp.escape(heading)} \(\d{4}-\d{2}-\d{2}\)$/)
+      if changelog.match?(/^#{Regexp.escape(heading)} \(unreleased\)$/)
+        fail!("Change '#{heading} (unreleased)' to '#{heading} (YYYY-MM-DD)' in RELEASE_NOTES.md.")
+      end
+      fail!("Add a '#{heading} (YYYY-MM-DD)' section to RELEASE_NOTES.md.")
     end
 
-    unreleased = changelog[/^## Unreleased\n(.*?)(?=^## |\z)/m, 1]
-    if unreleased.nil?
-      @notes << "CHANGELOG.md has no '## Unreleased' section; add an empty one for the next changes."
-      return
-    end
-    return if unreleased.strip.empty?
+    changelog.scan(/^## (\S+) \(unreleased\)\n(.*?)(?=^## |\z)/m) do |version, entries|
+      next if entries.strip.empty?
 
-    @notes << "CHANGELOG.md still has entries under '## Unreleased'; " \
-              "check whether they belong in #{@version}."
+      @notes << "RELEASE_NOTES.md has entries under '## #{version} (unreleased)'; " \
+                "check whether they belong in #{@version}."
+    end
   end
 
   private def verify_tag_new

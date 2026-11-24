@@ -32,9 +32,10 @@ Examine all tracked Markdown files at the repository root (`*.md`) and in
 
 Exceptions:
 
-- `CHANGELOG.md`: each released section describes that release as it
-  shipped. Fix typos and broken links only; update only the `## Unreleased`
-  section for current changes.
+- `RELEASE_NOTES.md`: each released section describes that release as it
+  shipped. Fix typos and broken links only; update only the
+  `## X.Y.Z (unreleased)` section for current changes, adding one with
+  the next version if there is none.
 - The prompts in `dev/prompts/` (other than the index) are not
   documentation; leave them alone unless they reference something that no
   longer exists.

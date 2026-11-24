@@ -2,13 +2,13 @@
 
 **Purpose:** Produce a checklist of what still needs to be done to release
 claude-limit-watch, based on the actual state of the repository. It works
-both before and after the version and CHANGELOG are updated. This is
+both before and after the version and release notes are updated. This is
 advisory: `bin/pre-release-check` is the hard gate.
 
 ## When to Use This
 
 - At any point, to answer "what would I need to do to release?"
-- After updating the version and CHANGELOG, before committing and pushing
+- After updating the version and release notes, before committing and pushing
   ("what is left?")
 
 It does not replace `bin/pre-release-check`; it does not verify CI, the
@@ -22,7 +22,7 @@ clean tree, or the built gem.
    working directory, and wait for confirmation before proceeding.
 2. Open the report by citing the most recent git commit.
 3. Run `git status`. List any uncommitted changes. They are expected if the
-   version and CHANGELOG were just updated; otherwise note them as items to
+   version and release notes were just updated; otherwise note them as items to
    resolve.
 4. Limit the review to git-tracked files, plus untracked files reported by
    `git status` (for the cleanup step).
@@ -57,13 +57,15 @@ list it as remaining unless the maintainer says it's done.)
 
 ### 1. Establish the release state and target version
 
-- Read `VERSION` from `lib/claude_limit_watch/version.rb`, the `## Unreleased`
-  section of `CHANGELOG.md`, and the newest `## X.Y.Z (YYYY-MM-DD)` heading.
+- Read `VERSION` from `lib/claude_limit_watch/version.rb`, any
+  `## X.Y.Z (unreleased)` section of `RELEASE_NOTES.md`, and the newest
+  `## X.Y.Z (YYYY-MM-DD)` heading.
 - Find the previous release tag (`git tag --sort=-v:refname`).
 - Decide whether the version has been bumped. It **has** if the newest dated
-  heading matches `VERSION`, `vVERSION` isn't tagged yet, and `## Unreleased`
-  is empty. It **has not** if there is content under `## Unreleased`, or
-  `VERSION` is already tagged. If the state is ambiguous, say so and ask.
+  heading matches `VERSION`, `vVERSION` isn't tagged yet, and no
+  `(unreleased)` section has entries. It **has not** if there is content
+  under an `(unreleased)` heading, or `VERSION` is already tagged. If the
+  state is ambiguous, say so and ask.
 - Determine the target version:
   - Bumped: the target is `VERSION`.
   - Not bumped: if the user named a target version, use it. Otherwise
@@ -73,15 +75,15 @@ list it as remaining unless the maintainer says it's done.)
     for the maintainer to confirm. Do not ask before proceeding; continue the
     review against the recommended version.
 
-### 2. Compare changes against the CHANGELOG
+### 2. Compare changes against the release notes
 
 - Review `git --no-pager log --oneline <previous-tag>..HEAD` and
   `git --no-pager diff --stat <previous-tag>..HEAD`, then the diffs that
   matter: `lib/` and `exe/` for user-visible changes, and the rest (CI,
-  `bin/`, `script/`, `dev/`, specs) for the CHANGELOG's Development
-  entries.
-- Compare against the CHANGELOG section for this release: the dated section
-  if bumped, or `## Unreleased` if not.
+  `bin/`, `script/`, `dev/`, specs) for the release notes' Development
+  section.
+- Compare against the release notes' section for this release: the dated
+  section if bumped, or the `(unreleased)` one if not.
 - List user-visible changes (commands, options, the panel and `--lines`
   output, the history file format, the recorder's behavior, error messages,
   the Ruby version requirement) that are missing from it.

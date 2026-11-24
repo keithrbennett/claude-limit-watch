@@ -65,7 +65,7 @@ jobs:
       - name: Check the gem includes every tracked file it should ship
         run: |
           diff <(gem spec claude-limit-watch-*.gem files | sed -n 's/^- //p' | LC_ALL=C sort) \
-               <(git ls-files -- lib exe docs/images README.md CHANGELOG.md LICENSE | LC_ALL=C sort)
+               <(git ls-files -- lib exe docs/images README.md RELEASE_NOTES.md LICENSE | LC_ALL=C sort)
       - name: Run the executable
         run: |
           exe/claude-limit-watch --version

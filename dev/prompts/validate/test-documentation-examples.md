@@ -21,7 +21,7 @@ written and produce the documented output. Report only; do not edit files.
 ## Scope
 
 Test the examples in `README.md`, `CONTRIBUTING.md`, and `docs/**/*.md`.
-Don't test `CHANGELOG.md`, which describes past releases.
+Don't test `RELEASE_NOTES.md`, which describes past releases.
 
 ## Safety
 

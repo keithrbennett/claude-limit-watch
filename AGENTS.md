@@ -125,7 +125,7 @@ Run `bundle exec exe/claude-limit-watch --help` for up-to-date usage information
 - Match existing style and patterns. Comments should clarify non-obvious logic only.
 - Never undo or overwrite user changes outside your scope; integrate with them instead. However, if the new changes would be better implemented by modifying other sections, e.g., extracting now-duplicated behavior into a special method, then do that.
 - When adding behavior, couple it with tests. Specs belong in `spec/<name>_spec.rb` for `lib/claude_limit_watch/<name>.rb` (shared helpers in `spec/support/`), and use RSpec (never minitest) with rspec-mocks for stubbing.
-- Specs and documentation matter as much as code. Update the README and CHANGELOG when behavior changes, and don't describe spec or doc changes as low-risk because they don't change how the code runs.
+- Specs and documentation matter as much as code. Update the README and release notes when behavior changes (add release-notes entries under `## X.Y.Z (unreleased)` at the top of `RELEASE_NOTES.md`, creating that heading with the next version if there is none; never add to a dated, released section), and don't describe spec or doc changes as low-risk because they don't change how the code runs.
 - Keep config files (such as `.rubocop.yml`) consistent with the maintainer's other projects: never remove a setting because nothing currently uses it.
 - The gem's file list (`claude-limit-watch.gemspec`) ships only files git tracks, so a new file under `lib/` must be added to git before the gem is built. CI fails if the built gem's files differ from the tracked ones.
 - Validate meaningful changes with `bundle exec rspec` when feasible; note skipped verification in your summary if you cannot run it.
@@ -183,7 +183,7 @@ bundle exec rubocop --cache false
 
 ## Documentation
 - `README.md` – user documentation: installation, usage, the panel, the recorder, the history file, and how it works.
-- `CHANGELOG.md` – changes by release.
+- `RELEASE_NOTES.md` – changes by release.
 - `CONTRIBUTING.md` – contribution process and development setup.
 - `CODE_OF_CONDUCT.md` – the code of conduct.
 - `dev/prompts/README.md` – the index of agent prompts.

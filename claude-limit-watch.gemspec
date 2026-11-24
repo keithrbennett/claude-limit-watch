@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 2.6'
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    files = Dir['lib/**/*.rb', 'exe/*', 'docs/images/*', 'README.md', 'CHANGELOG.md', 'LICENSE']
+    files = Dir['lib/**/*.rb', 'exe/*', 'docs/images/*', 'README.md', 'RELEASE_NOTES.md', 'LICENSE']
     # In a git checkout, ship only tracked files, so untracked or ignored files
     # in the working tree never end up in the gem. Without git or a .git
     # directory (e.g. building from a source tarball), ship the globbed files.
@@ -36,6 +36,6 @@ Gem::Specification.new do |spec|
   spec.executables   = ['claude-limit-watch']
   spec.require_paths = ['lib']
 
-  spec.metadata['changelog_uri'] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata['changelog_uri'] = "#{spec.homepage}/blob/main/RELEASE_NOTES.md"
   spec.metadata['rubygems_mfa_required'] = 'true'
 end

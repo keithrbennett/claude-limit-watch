@@ -45,7 +45,7 @@ Assess whether the change is:
   paths, in every mode it affects (the panel, `--lines`, `--once`, the
   recorder).
 - **Complete:** nothing needed is missing (callers, the README, the
-  CHANGELOG, `--help` output).
+  release notes, `--help` output).
 - **Simple and concise:** no unnecessary code, and no hand-written logic that
   an existing helper or the standard library provides. The gem has no
   runtime dependencies and must stay that way.

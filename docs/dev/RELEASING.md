@@ -9,9 +9,10 @@ pushing, and `gem push` stay manual (`gem push` asks for an MFA code).
 
 - [ ] Set the version in `lib/claude_limit_watch/version.rb`, following
   [Semantic Versioning](https://semver.org/).
-- [ ] In `CHANGELOG.md`, rename `## Unreleased` to `## VERSION (YYYY-MM-DD)`,
-  and add a new, empty `## Unreleased` above it. Make sure every
-  user-visible change is listed.
+- [ ] In `RELEASE_NOTES.md`, change the `## VERSION (unreleased)` heading
+  to `## VERSION (YYYY-MM-DD)`. Make sure every user-visible change is
+  listed. (Changes after the release go under a new
+  `## NEXT-VERSION (unreleased)` heading, added with the first of them.)
 - [ ] Check that the README's usage, options, and screenshot are current.
 - [ ] Optionally, have an agent follow
   [dev/prompts/review/release-review.md](../../dev/prompts/review/release-review.md)
@@ -30,7 +31,7 @@ docker run --rm -v "$PWD":/input:ro -w /input lycheeverse/lychee:0.24.2 \
 
 ```sh
 VERSION=0.2.0   # the new version
-git add lib/claude_limit_watch/version.rb CHANGELOG.md   # plus any docs you changed
+git add lib/claude_limit_watch/version.rb RELEASE_NOTES.md   # plus any docs you changed
 git commit -m "Release $VERSION"
 git push origin main
 ```
@@ -45,8 +46,8 @@ It stops at the first problem. It checks that:
 
 - the working tree is clean, and you're on `main`, in sync with
   `origin/main`;
-- `CHANGELOG.md` has a `## VERSION (YYYY-MM-DD)` section (and warns if `## Unreleased`
-  still has entries);
+- `RELEASE_NOTES.md` has a `## VERSION (YYYY-MM-DD)` section (and warns
+  if a `## X.Y.Z (unreleased)` section has entries);
 - the tag `vVERSION` doesn't exist yet;
 - the newest push or manual CI run (`.github/workflows/ci.yml`) for HEAD
   passed. It watches a run still in progress, and just after a push it
@@ -84,7 +85,7 @@ printed: `sha256sum` (macOS: `shasum -a 256`) on that file.
 
 Then check that the new version is listed at
 <https://rubygems.org/gems/claude-limit-watch>, and optionally create a
-GitHub release from the tag, with that version's CHANGELOG section.
+GitHub release from the tag, with that version's section of `RELEASE_NOTES.md`.
 
 ## If a release is broken
 

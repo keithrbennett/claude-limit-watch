@@ -118,7 +118,7 @@ Useful commands and entry points include:
 
 ## Documentation
 
-The documentation is [README.md](README.md) and [CHANGELOG.md](CHANGELOG.md). The panel screenshot, `docs/images/panel.png`, is taken from the demo history written by `script/demo_history.rb`.
+The documentation is [README.md](README.md) and [RELEASE_NOTES.md](RELEASE_NOTES.md). Add release-notes entries under `## X.Y.Z (unreleased)` at the top of `RELEASE_NOTES.md`, creating that heading with the next version if there is none. The panel screenshot, `docs/images/panel.png`, is taken from the demo history written by `script/demo_history.rb`.
 
 ---
 

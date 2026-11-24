@@ -7,7 +7,7 @@ RSpec.describe PreReleaseCheck do
   let(:err) { StringIO.new }
   let(:head) { 'a' * 40 }
   let(:other) { 'b' * 40 }
-  let(:changelog) { "# Changelog\n\n## Unreleased\n\n## 1.2.0 (2027-01-15)\n\n- A change.\n" }
+  let(:changelog) { "# Release Notes\n\n## 1.2.0 (2027-01-15)\n\n- A change.\n" }
   let(:passed) do
     { 'databaseId' => 7, 'status' => 'completed', 'conclusion' => 'success', 'event' => 'push' }
   end
@@ -46,7 +46,7 @@ RSpec.describe PreReleaseCheck do
   before do
     allow(File).to receive(:read).and_call_original
     allow(File).to receive(:read).with(end_with('version.rb')).and_return("  VERSION = '1.2.0'\n")
-    allow(File).to receive(:read).with(end_with('CHANGELOG.md')).and_return(changelog)
+    allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md')).and_return(changelog)
     allow(FileUtils).to receive(:rm_f)
     allow(File).to receive(:exist?).and_call_original
     allow(File).to receive(:exist?).with('claude-limit-watch-1.2.0.gem').and_return(true)
@@ -119,27 +119,31 @@ RSpec.describe PreReleaseCheck do
   end
 
   [
-    ['no section for the version', "## Unreleased\n\n- New.\n"],
-    ['a section without a date', "## 1.2.0 (unreleased)\n"],
-  ].each do |situation, text|
-    it "fails when the CHANGELOG has #{situation}" do
-      allow(File).to receive(:read).with(end_with('CHANGELOG.md')).and_return(text)
+    ['no section for the version', "## 1.1.0 (2027-01-01)\n\n- Old.\n",
+      "Add a '## 1.2.0 (YYYY-MM-DD)' section"],
+    ['a section without a date', "## 1.2.0\n", "Add a '## 1.2.0 (YYYY-MM-DD)' section"],
+    ['the version still unreleased', "## 1.2.0 (unreleased)\n",
+      "Change '## 1.2.0 (unreleased)' to '## 1.2.0 (YYYY-MM-DD)'"],
+  ].each do |situation, text, message|
+    it "fails when the release notes have #{situation}" do
+      allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md')).and_return(text)
       expect(checker.call).to be(false)
-      expect(err.string).to include("Add a '## 1.2.0 (YYYY-MM-DD)' section")
+      expect(err.string).to include(message)
     end
   end
 
-  it 'warns when there is no Unreleased section' do
-    allow(File).to receive(:read).with(end_with('CHANGELOG.md')).and_return("## 1.2.0 (2027-01-15)\n")
+  it 'warns about entries under an unreleased version' do
+    allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md'))
+      .and_return("## 1.3.0 (unreleased)\n\n- Forgotten.\n\n## 1.2.0 (2027-01-15)\n")
     expect(checker.call).to be(true)
-    expect(err.string).to include("no '## Unreleased' section")
+    expect(err.string).to include("has entries under '## 1.3.0 (unreleased)'")
   end
 
-  it 'warns about entries still under Unreleased' do
-    allow(File).to receive(:read).with(end_with('CHANGELOG.md'))
-      .and_return("## Unreleased\n\n- Forgotten.\n\n## 1.2.0 (2027-01-15)\n")
+  it 'does not warn about an empty unreleased section' do
+    allow(File).to receive(:read).with(end_with('RELEASE_NOTES.md'))
+      .and_return("## 1.3.0 (unreleased)\n\n## 1.2.0 (2027-01-15)\n")
     expect(checker.call).to be(true)
-    expect(err.string).to include("still has entries under '## Unreleased'")
+    expect(err.string).not_to include('unreleased')
   end
 
   describe 'CI' do
