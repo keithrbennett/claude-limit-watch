@@ -4,6 +4,8 @@
 
 - Development: the specs write a SimpleCov coverage report to `coverage/`
   on Ruby 3.2 or later.
+- Development: Dependabot checks the development gems and CI actions
+  weekly.
 
 ## 0.1.0 (2026-11-23)
 

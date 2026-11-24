@@ -1,0 +1,31 @@
+# .github/dependabot.yml
+# Dependabot configuration for a Ruby gem project. Weekly rather than daily
+# (as in cov-loupe): the gem has no runtime dependencies, only development
+# gems and CI actions.
+#
+# Version updates only: with Gemfile.lock gitignored, Dependabot has no
+# locked versions to raise security alerts for. Bundler PRs come only when
+# a release falls outside a Gemfile requirement, such as a new RuboCop minor
+# outside its patch-level pin; such a PR is the deliberate review of that
+# release's new cops (CI's RuboCop job shows any new offenses).
+
+version: 2
+updates:
+  # Maintain dependencies for Ruby (Bundler)
+  - package-ecosystem: "bundler"
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      # Prefix all commit messages with "chore(deps)"
+      prefix: "chore(deps)"
+
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/" # Look for workflows in the .github/workflows directory
+    schedule:
+      interval: "weekly"
+    commit-message:
+      # Prefix all commit messages with "chore(ci)"
+      prefix: "chore(ci)"
