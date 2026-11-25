@@ -65,8 +65,9 @@ In a terminal, the viewer shows a full-screen [panel](#panel). With
   `--lines` output. On the panel, if it isn't 10, 30, 60 or 120, it
   adds a row to the projection bars.
 - **`--lines`**: print one line per reading instead of the panel.
-- **`--once`**: print the panel once and exit, without starting a
-  recorder. When piped, the output has no colors.
+- **`--once`**: print the panel once, then the version and project page,
+  and exit, without starting a recorder. When piped, the output has no
+  colors.
 - **`--no-record`**: don't start a recorder; just show the history file.
   See [Viewing without recording](#viewing-without-recording).
 - **`--utc`**: show times in UTC. See [Times in UTC](#times-in-utc).
@@ -83,10 +84,11 @@ Ctrl-C to quit; the recorder keeps running.
 
 From top to bottom:
 
-- **Heading**: a framed title in lavender. If the terminal is too narrow
-  for the frame, or too short for the whole panel, a one-line title
-  replaces it. This saves 4 rows, so the panel fits in a 24-row
-  terminal.
+- **Title line**: the name and version, centered on a lavender rule
+  (with `--utc`, followed by "times in UTC"). In a narrower terminal the
+  name isn't letter-spaced, and in a very narrow one the rule is left
+  out, then the version, then the name; "times in UTC" goes last. The
+  whole panel fits in a 24-row terminal.
 - **Used**: the percentage of the quota used in the current window.
 - **Time**: how much of the 5-hour window has passed (in lavender). Below
   it are the window's start and end times, followed by the current time.
@@ -96,10 +98,13 @@ From top to bottom:
   row uses the average rate since the window started. There is no single
   overall projection.
 - **Bottom lines**, below a horizontal rule: how to quit and how to stop
-  the recorder, with the current time on the right; the version and
-  project page; and whether the recorder is running, with its pid and the
-  history file it writes to. With `--once`, the line about quitting is
-  left out, but the current time is still shown.
+  the recorder, then whether the recorder is running, with its pid. On
+  the right, after a vertical bar, are the current time and when the
+  last reading was. In a terminal too narrow for the bar, they're
+  right-aligned without it, or left out if they'd be cut off. The history
+  file is on a line of its own because its path can be long. With
+  `--once`, the text about quitting is left out, but the current time is
+  still shown.
 
 ### Reading the projection bars
 
@@ -190,10 +195,11 @@ The thresholds are constants at the top of
 ## Colors
 
 Colors come from the 256-color palette (green 34, yellow 136, red 196,
-dark red 52, lavender 141), because terminal themes often change the 16
-basic colors (showing yellow as orange, for example). The exception is the
-gray used for secondary text: it is the basic "bright black", which themes
-change to their own muted text color.
+dark red 52, lavender 141, and a dimmer lavender 97 for the title line's
+rule), because terminal themes often change the 16 basic colors (showing
+yellow as orange, for example). The exception is the gray used for
+secondary text: it is the basic "bright black", which themes change to
+their own muted text color.
 
 Set the `NO_COLOR` environment variable to turn colors off.
 
@@ -217,8 +223,8 @@ doesn't suggest starting a recorder. `--once` behaves the same way.
 Shows all times in UTC instead of local time. Local time, the default, has
 no marker. With UTC:
 
-- the panel heading says so once for all times
-  (`times in UTC · last reading 09:00`);
+- the panel's title line says so once for all times
+  (`v0.2.0 · times in UTC`);
 - `--lines` output prints `Times are in UTC.` before the readings.
 
 `record --utc` does the same for the recorder's own output. A recorder that
@@ -258,9 +264,9 @@ other than the default, give `stop` the same file:
 You don't need to remember this command. The bottom of the panel shows
 how to stop the recorder, and when you quit the viewer, it prints the
 command again so it stays in your scrollback. For a non-default history
-file, the printed command includes `--file PATH`. The panel has no room
-for a path, so for such a file it shows `kill <pid>` instead, which works
-for any recorder.
+file, the printed command includes `--file PATH`. The panel's footer has
+no room for a command with a path, so for such a file it shows
+`kill <pid>` instead, which works for any recorder.
 
 ### When readings stop
 

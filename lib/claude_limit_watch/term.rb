@@ -37,23 +37,13 @@ module ClaudeLimitWatch
       out
     end
 
-    # The terminal's [rows, columns] (either may be 0 if unknown), or nil.
-    def term_size
-      require 'io/console'
-      IO.console&.winsize
-    rescue
-      nil
-    end
-
+    # The terminal's columns, or 80 if unknown.
     def term_width
-      cols = term_size&.last.to_i
+      require 'io/console'
+      cols = IO.console&.winsize&.last.to_i
       cols.positive? ? cols : 80
-    end
-
-    # Terminal rows, or nil if unknown.
-    def term_height
-      rows = term_size&.first.to_i
-      rows.positive? ? rows : nil
+    rescue
+      80
     end
   end
 end

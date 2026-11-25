@@ -2,6 +2,23 @@
 
 ## 0.2.0 (unreleased)
 
+### Panel
+
+- **A one-line title.** The 3-row framed banner is replaced by one line:
+  the name and version, centered on a lavender rule. The panel now looks
+  the same at every terminal height, instead of dropping the banner when
+  the terminal is too short.
+- **The history file has a line of its own** at the bottom, so a longer
+  path fits before the terminal's edge cuts it off. When the last reading
+  was is now under the current time, in a column after a vertical bar
+  (left out in terminals too narrow for it). The version and project
+  page line is gone from the panel; the version is on the title line,
+  and both are still printed on quitting, after `--once`'s panel, and in
+  `--help`.
+- **The no-data message no longer shows the history file's path,**
+  which is now on the bottom line, and "no readings yet" is no longer
+  repeated at the top.
+
 ### Packaging
 
 - **The gem ships only files git tracks.** When it's built from a git

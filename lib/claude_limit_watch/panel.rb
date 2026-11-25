@@ -13,37 +13,25 @@ module ClaudeLimitWatch
     LEFT_CHAR = '▒'
     LOCKED_CHAR = 'X'
     LOCKED_COLOR = [1, 38, 5, 196, 48, 5, 52].freeze # bold red X on a dark red background
-    ACCENT_COLOR = [38, 5, 141].freeze # lavender (256-color 141): the heading and the Time bar
+    ACCENT_COLOR = [38, 5, 141].freeze # lavender (256-color 141): the title and the Time bar
+    TITLE_RULE_COLOR = [38, 5, 97].freeze # a dimmer lavender: the rules on the title line
 
     # The panel's lines for a snapshot (Snapshot.build, plus :recorder_pid).
     # once: printing a single copy (--once), so use a fixed width, don't
     # truncate, and leave out the quit instruction.
-    # show_banner: false uses the one-line title even when the banner fits the
-    # width; the panel redraws that way when the terminal is too short for it.
     # record: whether this viewer starts the recorder (false with --no-record).
-    def lines(st, now, once: false, show_banner: true, record: true)
+    def lines(st, now, once: false, record: true)
       w = once ? 100 : term_width
       bar_w = (w - 47).clamp(10, 50) # leaves room for the projection rows' text
+      # The title line and the rule above the bottom lines end where the
+      # legend does (or at the edge of a narrower terminal).
+      rule_w = [[legend_width, w].min - 2, 0].max
       p = st[:proj]
       now_text = "now #{clock(now)}" # on the Time bar's second line, and at the bottom
-      info =
-        if st[:last_t]
-          "last reading #{clock(st[:last_t])} (#{dur_m(now - st[:last_t])} ago)"
-        else
-          'no readings yet'
-        end
-      info = "times in UTC · #{info}" if Format.utc # covers every time on the panel
       out = []
       blank = -> { out << '' unless out.last.empty? } # a blank line, never two
-      banner_drawn = show_banner && w >= banner_rows.map(&:size).max + 4
       legend_drawn = false
-      if banner_drawn
-        out.concat(banner.map { |row| "  #{row}" })
-        out << ''
-        out << "  #{paint("Claude's 5-hour usage limit · #{info}", GRAY)}"
-      else
-        out << "#{paint(' Claude 5-hour limit', 1)}   #{paint(info, GRAY)}"
-      end
+      out << "  #{title_line(rule_w)}"
       out << ''
       status = headline(st, now)
       out.push("  #{status[0]}  #{status[1]}", '') if status
@@ -88,20 +76,19 @@ module ClaudeLimitWatch
       end
       recorder =
         if st[:recorder_pid]
-          "Recorder running (pid #{st[:recorder_pid]}), writing to #{home_relative(History.file)}"
+          "Recorder running (pid #{st[:recorder_pid]}), writing to:"
         else
-          "Recorder not running (history file: #{home_relative(History.file)})"
+          'Recorder not running. History file:'
         end
-      # The rule ends where the legend does (or at the edge of a narrower
-      # terminal). A blank line goes above it only when no legend was drawn
-      # and the last line isn't already blank. With a legend, the rule sits
-      # right under it, or under any warning after it, with no blank line:
-      # one there would push the worst case past 24 rows.
+      # Without a reading, the headline says so.
+      last_reading = st[:last_t] ? last_reading_text(st[:last_t], now) : ''
+      # A blank line goes above the rule only when no legend was drawn and
+      # the last line isn't already blank. With a legend, the rule sits right
+      # under it, or under any warning after it, with no blank line: one
+      # there would push the worst case past 24 rows.
       blank.call unless legend_drawn
-      rule_w = [[legend_width, w].min - 2, 0].max
-      out << paint("  #{'─' * rule_w}", GRAY)
       # How to quit and stop the recorder (not with --once), then the current
-      # time, ending where the rule does.
+      # time.
       footer =
         if once
           ''
@@ -110,15 +97,15 @@ module ClaudeLimitWatch
         else
           'q to quit'
         end
-      out << paint("  #{footer}#{' ' * [rule_w - footer.size - now_text.size, 2].max}#{now_text}", GRAY)
-      out << paint("  #{VERSION_LINE}", GRAY)
-      out << paint("  #{recorder}", GRAY)
+      # Then the recorder's status, and when it last took a reading. The
+      # history file gets a line of its own, since its path can be long.
+      bottom, bar_col = columns([[footer, now_text], [recorder, last_reading]], rule_w)
+      rule = '─' * rule_w
+      rule[bar_col] = '┬' if bar_col # joins the bar below it
+      out << paint("  #{rule}", GRAY)
+      out.concat(bottom.map { |l| paint("  #{l}", GRAY) })
+      out << paint("  #{home_relative(History.file)}", GRAY)
       return out if once
-
-      # In a terminal too short for the panel, the one-line title replaces the
-      # banner (4 rows fewer) rather than letting the top scroll off.
-      h = term_height
-      return lines(st, now, show_banner: false, record: record) if banner_drawn && h && out.size > h
 
       out.map { |l| fit(l, w) }
     end
@@ -153,12 +140,14 @@ module ClaudeLimitWatch
       end
     end
 
-    # Prints the panel once, without the full-screen mode. Never starts the
-    # recorder.
+    # Prints the panel once, without the full-screen mode, then the version
+    # and project page, as quitting the full-screen panel does. Never starts
+    # the recorder.
     def run_once(rate_window)
       now = Time.now
       st = Snapshot.build(History.read, now, rate_window: rate_window).merge(recorder_pid: Recorder.pid)
       puts lines(st, now, once: true, record: false) # --once never starts one
+      puts paint("  #{VERSION_LINE}", GRAY)
     end
 
     # Shows the panel full-screen, redrawing it each second, until q or Ctrl-C.
@@ -212,7 +201,7 @@ module ClaudeLimitWatch
     # in the bars instead, so there's no single headline projection.
     private def headline(st, now)
       p = st[:proj]
-      return [paint(' NO DATA ', 1, 7, GRAY), "No readings yet in #{History.file}"] if st[:no_data]
+      return [paint(' NO DATA ', 1, 7, GRAY), 'No readings yet in the history file (below)'] if st[:no_data]
       if st[:no_window]
         return [paint(' IDLE ', 1, 7, GRAY), "No active 5-hour window (#{st[:no_window].round}% used)"]
       end
@@ -224,14 +213,58 @@ module ClaudeLimitWatch
         paint("Resets at #{clock(p[:resets])} (in #{dur_m(p[:resets] - now)})", 1, COLORS[:urgent])]
     end
 
-    private def banner_rows
-      inner = "  ◆  #{'Claude Limit Watch'.upcase.chars.join(' ')}  ◆  "
-      ["╔#{'═' * inner.size}╗", "║#{inner}║", "╚#{'═' * inner.size}╝"]
+    # The title line, width columns wide: the name (bold lavender) and
+    # version, centered on a dimmer lavender rule. With --utc, "times in UTC"
+    # follows (it covers every time on the panel). The name is letter-spaced
+    # when that fits. With less room, the rule is left out, then the
+    # version, then the name: "times in UTC" goes last, since it says how to
+    # read every time.
+    private def title_line(width)
+      name = 'CLAUDE LIMIT WATCH'
+      utc = ' · times in UTC' if Format.utc
+      after = "v#{VERSION}#{utc}"
+      rule = ->(n) { paint('━' * n, *TITLE_RULE_COLOR) }
+      # The version follows the name after its word gap.
+      [[name.chars.join(' '), '   '], [name, ' ']].each do |text, gap|
+        rules = width - text.size - gap.size - after.size - 4 # 2 spaces either side
+        next if rules < 16 # at least 8 on each side, to read as a border
+
+        return "#{rule.call(rules / 2)}  #{paint(text, 1, *ACCENT_COLOR)}#{gap}#{paint(after, GRAY)}  " \
+          "#{rule.call(rules - (rules / 2))}"
+      end
+      bold = paint(name, 1, *ACCENT_COLOR)
+      return "#{bold} #{paint(after, GRAY)}" if width >= name.size + 1 + after.size
+      return bold unless utc
+      return "#{bold}#{paint(utc, GRAY)}" if width >= name.size + utc.size
+
+      paint('times in UTC', GRAY)
     end
 
-    # The framed heading, in one color (plain when colors are off).
-    private def banner
-      banner_rows.map { |row| paint(row, 1, *ACCENT_COLOR) }
+    # Lines of [left, right] text, width columns wide: the right text in a
+    # column at the end, after a bar centered between the columns. The right
+    # column has room for the usual last-reading text, so the bar stays put
+    # as the times change; a longer one (an hour or more ago) moves it left.
+    # With no room for the bar (and a space either side), it's left out and
+    # each right text ends where the line does, or is left out if it would
+    # be cut off. Returns [lines, the bar's column, or nil].
+    private def columns(rows, width)
+      left_w = rows.map { |left, _| left.size }.max
+      usual = last_reading_text(Time.at(0), Time.at(0)).size # a reading under a minute old
+      right_w = [*rows.map { |_, right| right.size }, usual].max
+      gap = width - left_w - right_w
+      bar_col = gap < 3 ? nil : left_w + ((gap - 1) / 2)
+      lines = rows.map do |l, r|
+        if bar_col
+          "#{l.ljust(bar_col)}│#{' ' * (width - right_w - bar_col - 1)}#{r}"
+        else
+          l.size + 2 + r.size > width ? l : l + r.rjust(width - l.size)
+        end
+      end
+      [lines.map(&:rstrip), bar_col] # an empty right text leaves no trailing spaces
+    end
+
+    private def last_reading_text(time, now)
+      "last reading #{clock(time)} (#{dur_m(now - time)} ago)"
     end
 
     # The projection bars' key: each symbol drawn as it appears in the bars.

@@ -3,8 +3,7 @@
 # The full-screen panel's layout.
 RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
   let(:m) { described_class }
-  let(:banner_text) { 'C L A U D E' }
-  let(:one_line_title) { /\A Claude 5-hour limit/ }
+  let(:spaced_name) { 'C L A U D E   L I M I T   W A T C H' }
 
   # The demo scenario, then a failed check, then no readings for 15 minutes:
   # with an extra rate-window row, the tallest panel there is.
@@ -29,45 +28,109 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     }
   end
 
-  it 'shows the normal panel in 23 rows' do
+  it 'shows the normal panel in 19 rows' do
     lines = panel(window_records, NOW)
-    expect(lines.size).to eq(23)
-    expect(lines[1]).to include(banner_text)
+    expect(lines.size).to eq(19)
+    expect(lines.first).to include(spaced_name)
     expect(lines)
       .to include(a_string_starting_with('  q to quit · stop the recorder with: claude-limit-watch stop '))
-    expect(lines[-2]).to eq("  #{ClaudeLimitWatch::VERSION_LINE}")
-    expect(lines[-1]).to start_with('  Recorder running (pid 1234)')
+    expect(lines[-2]).to start_with('  Recorder running (pid 1234), writing to:  ')
+      .and end_with('  last reading 08:00 (<1m ago)')
+      .and have_attributes(size: lines.find { |l| l.include?('──') }.size)
+    expect(lines[-1]).to eq("  #{m.home_relative(ClaudeLimitWatch::History.file)}")
   end
 
-  it 'drops the banner to fit the tallest panel in 24 rows' do
-    expect(panel(worst_records, worst_now, rate_window: 45).size).to eq(28) # unknown height: the banner stays
+  it 'says there are no readings yet in the headline only' do
+    lines = panel([], NOW, pid: nil)
+    expect(lines.grep(/no readings yet/i)).to eq(['   NO DATA   No readings yet in the history file (below)'])
+    expect(lines[-2]).to match(/\A  Recorder not running\. History file: +│\z/)
+  end
 
-    lines = panel(worst_records, worst_now, rows: 24, rate_window: 45)
-    expect(lines.size).to eq(24)
-    expect(lines.first).to match(one_line_title)
+  it 'leaves the version and project page line out of the panel' do
+    expect(panel(window_records, NOW).grep(/#{Regexp.escape(ClaudeLimitWatch::HOMEPAGE)}/)).to be_empty
   end
 
   it 'fits 24 rows in every state' do
+    expect(panel(worst_records, worst_now, rate_window: 45).size).to eq(24) # the tallest
     states.each do |state, (records, now, pid)|
-      size = panel(records, now, rows: 24, pid: pid, rate_window: 45).size
+      size = panel(records, now, pid: pid, rate_window: 45).size
       expect(size).to be <= 24, "#{size} rows in the #{state} panel"
     end
   end
 
-  it 'keeps the banner when it fits' do
-    expect(panel(window_records, NOW, rows: 24)[1]).to include(banner_text)
+  describe 'the title line' do
+    before { stub_const('ClaudeLimitWatch::VERSION', '0.2.0.pre.1') }
+
+    def title(cols, utc: false)
+      ClaudeLimitWatch::Format.utc = utc
+      lines = panel(window_records, NOW, cols: cols)
+      [lines.first, lines.find { |l| l.include?('──') }]
+    end
+
+    # The title centered on the rule, with left and right rule cells.
+    def centered(left, text, right)
+      "  #{'━' * left}  #{text}  #{'━' * right}"
+    end
+
+    it 'centers the name and version on a rule that ends where the bottom rule does' do
+      spaced = "#{spaced_name}   v0.2.0.pre.1"
+      plain = 'CLAUDE LIMIT WATCH v0.2.0.pre.1'
+      {
+        [120, false] => centered(20, spaced, 20),
+        [120, true]  => centered(12, "#{spaced} · times in UTC", 13),
+        [80, false]  => centered(12, spaced, 12),
+        [80, true]   => centered(14, "#{plain} · times in UTC", 14), # spaced would leave 4 and 5
+        [60, false]  => centered(11, plain, 12),
+      }.each do |(cols, utc), expected|
+        line, rule = title(cols, utc: utc)
+        expect(line).to eq(expected)
+        expect(line.size).to eq(rule.size), "at #{cols} columns"
+      end
+    end
+
+    it 'leaves out the rule when it would be shorter than 8 on each side' do
+      expect(title(60, utc: true).first).to eq('  CLAUDE LIMIT WATCH v0.2.0.pre.1 · times in UTC')
+    end
+
+    it 'leaves out the version, then the name, keeping the UTC note, when they would be cut off' do
+      {
+        [33, false] => '  CLAUDE LIMIT WATCH v0.2.0.pre.1',
+        [32, false] => '  CLAUDE LIMIT WATCH',
+        [47, true]  => '  CLAUDE LIMIT WATCH · times in UTC',
+        [35, true]  => '  CLAUDE LIMIT WATCH · times in UTC',
+        [34, true]  => '  times in UTC',
+        [14, true]  => '  times in UTC',
+      }.each do |(cols, utc), expected|
+        expect(title(cols, utc: utc).first).to eq(expected), "at #{cols} columns"
+      end
+    end
+
+    it 'draws the name in bold lavender, the rules in dimmer lavender, and the rest in gray' do
+      allow($stdout).to receive(:tty?).and_return(true)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+      allow(m).to receive(:term_width).and_return(120)
+      st = ClaudeLimitWatch::Snapshot.build(window_records, NOW, rate_window: 30).merge(recorder_pid: 1234)
+      rule = "\e[38;5;97m#{'━' * 20}\e[0m"
+      expect(m.lines(st, NOW).first)
+        .to eq("  #{rule}  \e[1;38;5;141m#{spaced_name}\e[0m   \e[90mv0.2.0.pre.1\e[0m  #{rule}")
+    end
   end
 
-  it 'uses the one-line title in narrow terminals' do
-    expect(panel(window_records, NOW, cols: 40).first).to match(one_line_title)
+  it 'shows the history file on a line of its own, so a long path leaves the recorder line whole' do
+    long = "/#{'very-long-directory/' * 6}history.jsonl"
+    allow(ClaudeLimitWatch::History).to receive(:file).and_return(long)
+    lines = panel(window_records, NOW, pid: nil, cols: 80)
+    expect(lines[-2]).to start_with('  Recorder not running. History file:')
+    expect(lines[-1]).to eq("  #{long}"[0, 80])
   end
 
-  it 'keeps the banner and leaves out quitting with --once' do
-    lines = panel(worst_records, worst_now, rows: 10, once: true) # --once ignores the terminal's height
-    expect(lines[1]).to include(banner_text)
+  it 'leaves out quitting with --once' do
+    lines = panel(worst_records, worst_now, once: true)
+    expect(lines.first).to include(spaced_name)
     expect(lines.grep(/q to quit/)).to be_empty
     expect(lines).to include(a_string_matching(/\A +\d\d:\d\d +\d\d:\d\d  now 08:16\z/))
-    expect(lines).to include(a_string_matching(/\A +now 08:16\z/))
+    expect(lines).to include(a_string_matching(/\A +│ +now 08:16\z/))
   end
 
   it "shows the current time after the window's end time, under the elapsed time" do
@@ -81,14 +144,65 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
   end
 
-  it 'shows the current time at the end of the rule, with or without a window' do
-    [[window_records, 80], [window_records, 120], [[], 80]].each do |records, cols|
-      lines = panel(records, NOW + 59, cols: cols)
-      rule = lines.find { |l| l.include?('──') }
-      expect(lines[lines.index(rule) + 1])
-        .to match(/\A  q to quit · .* {2,}now 08:00\z/).and have_attributes(size: rule.size)
+  describe 'the bottom lines' do
+    # The footer and recorder lines, under the rule.
+    def bottom(records, pid: 1234, cols: 120, now: NOW + 59)
+      lines = panel(records, now, pid: pid, cols: cols)
+      rule = lines.index { |l| l.include?('──') }
+      [lines[rule], *lines[rule + 1, 2]]
     end
-    expect(panel([], NOW, pid: nil)).to include(a_string_matching(/\A  q to quit {2,}now 08:00\z/))
+
+    it 'shows the current time and the last reading in a column, after a bar centered between the columns' do
+      [[window_records, 1234, 'claude-limit-watch stop'], [window_records, nil, 'q to quit'],
+        [[], 1234, 'claude-limit-watch stop']].each do |records, pid, left_end|
+        rule, footer, recorder = bottom(records, pid: pid)
+        bar = footer.index('│')
+        expect(recorder.index('│')).to eq(bar)
+        expect(rule.index('┬')).to eq(bar) # joined to the rule
+        expect(rule.count('┬')).to eq(1)
+        right = footer.index('now 08:00')
+        # With no readings, the headline says so, and the right side is blank.
+        expect(recorder.index('last reading') || recorder.size).to eq(records.empty? ? bar + 1 : right)
+        left = [footer.index(left_end) + left_end.size, recorder.index(':', 20) + 1].max
+        expect((bar - left) - (right - bar - 1)).to be_between(-1, 0) # centered, any odd space after it
+        expect(right + 'last reading 08:00 (<1m ago)'.size).to eq(rule.size) # room for the usual reading
+      end
+    end
+
+    it 'keeps the bar in place for readings up to an hour old' do
+      columns = [60, 600, 3540].map do |age| # 1m, 10m and 59m
+        rule, footer, recorder = bottom(window_records, now: NOW + age)
+        [rule.index('┬'), footer.index('│'), recorder.index('│'), recorder.index('last reading')]
+      end
+      expect(columns.uniq.size).to eq(1)
+    end
+
+    it 'keeps the bar, moved left, for a reading an hour or more old' do
+      [NOW + (65 * 60), NOW + (605 * 60)].each do |now| # 1h 05m and 10h 05m
+        rule, footer, recorder = bottom(window_records, now: now)
+        expect(recorder).to end_with(' ago)').and have_attributes(size: rule.size)
+        expect([rule.index('┬'), footer.index('│'), recorder.index('│')].uniq.size).to eq(1)
+        expect(footer.index('now')).to eq(recorder.index('last reading'))
+        expect(footer).to match(/stop +│/)
+      end
+    end
+
+    it 'never cuts off a time: in narrow terminals, a right text that does not fit is left out' do
+      (40..100).each do |cols|
+        _, footer, recorder = bottom(window_records, cols: cols)
+        { footer => [' now', 'now 08:00'], recorder => ['last r', 'last reading 08:00 (1m ago)'] }
+          .each do |line, (start, whole)|
+            expect(!line.include?(start) || line.end_with?(whole)).to be(true), "at #{cols}: #{line.inspect}"
+          end
+      end
+    end
+
+    it 'right-aligns the current time and the last reading, without the bar, when there is no room for it' do
+      rule, footer, recorder = bottom(window_records, cols: 80)
+      expect([rule, footer, recorder].grep(/[│┬]/)).to be_empty
+      expect(footer).to end_with('  now 08:00').and have_attributes(size: rule.size)
+      expect(recorder).to end_with('  last reading 08:00 (1m ago)').and have_attributes(size: rule.size)
+    end
   end
 
   it 'shows the current time in UTC with --utc, with no marker of its own' do
@@ -107,7 +221,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     allow($stdout).to receive(:tty?).and_return(true)
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
-    allow(m).to receive_messages(term_width: 120, term_height: nil)
+    allow(m).to receive(:term_width).and_return(120)
     st = ClaudeLimitWatch::Snapshot.build(worst_records, worst_now, rate_window: 30).merge(recorder_pid: 1234)
     lines = m.lines(st, worst_now)
     expect(lines).to include(a_string_starting_with("\e[38;5;136m  Last check failed"),
@@ -140,17 +254,18 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       expect { m.run_once(30) }.to output(/^  No new readings for 15m\.$/).to_stdout
     end
 
+    it 'ends --once with the version and project page' do
+      allow(ClaudeLimitWatch::History).to receive(:read).and_return(window_records)
+      allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(nil)
+      allow(Time).to receive(:now).and_return(NOW)
+      expect { m.run_once(30) }.to output(/\n  #{Regexp.escape(ClaudeLimitWatch::VERSION_LINE)}\n\z/).to_stdout
+    end
+
     it 'says how to stop the recorder, by pid for another history file' do
       hint = '  q to quit · stop the recorder with: '
       expect(panel(window_records, NOW)).to include(a_string_starting_with("#{hint}claude-limit-watch stop "))
       allow(ClaudeLimitWatch::History).to receive(:default_file).and_return('/elsewhere/history.jsonl')
       expect(panel(window_records, NOW)).to include(a_string_starting_with("#{hint}kill 1234 "))
-    end
-
-    it 'keeps --no-record when it drops the banner' do
-      lines = panel(worst_records, worst_now, pid: nil, rows: 24, rate_window: 45, record: false)
-      expect(lines.first).to match(one_line_title)
-      expect(lines).to include('  No new readings for 15m.')
     end
 
     it 'leaves out the warning with no data and nothing to say' do
@@ -167,7 +282,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       allow($stdin).to receive(:tty?).and_return(false) # no key reading, no stty
       allow(panel).to receive(:at_exit)
       allow(panel).to receive(:trap)
-      allow(panel).to receive_messages(term_width: 120, term_height: nil)
+      allow(panel).to receive(:term_width).and_return(120)
       allow(ClaudeLimitWatch::History::Cache).to receive(:new).and_return(double(records: window_records))
       allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(nil)
       allow(Time).to receive(:now).and_return(NOW + 900)
@@ -241,13 +356,14 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
 
   describe 'times' do
     def times(lines)
-      heading = lines.grep(/last reading/).first[/(times in UTC · )?last reading \S+/]
-      [heading, lines.grep(/\A +\d\d:\d\d +\d\d:\d\d  now \d\d:\d\d\z/).first.split]
+      [lines.first.include?('times in UTC'), lines.grep(/last reading/).first[/last reading \S+/],
+        lines.grep(/\A +\d\d:\d\d +\d\d:\d\d  now \d\d:\d\d\z/).first.split]
     end
 
     it 'shows local time' do
       in_zone('Asia/Singapore') do
-        expect(times(panel(window_records, NOW))).to eq(['last reading 16:00', %w[12:40 17:40 now 16:00]])
+        expect(times(panel(window_records, NOW)))
+          .to eq([false, 'last reading 16:00', %w[12:40 17:40 now 16:00]])
       end
     end
 
@@ -255,7 +371,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       ClaudeLimitWatch::Format.utc = true
       in_zone('Asia/Singapore') do
         expect(times(panel(window_records, NOW)))
-          .to eq(['times in UTC · last reading 08:00', %w[04:40 09:40 now 08:00]])
+          .to eq([true, 'last reading 08:00', %w[04:40 09:40 now 08:00]])
         expect(panel(window_records, NOW).grep(/limit at 0\d:\d\d/)).not_to be_empty
       end
     end
