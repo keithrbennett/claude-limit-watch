@@ -7,8 +7,8 @@ require 'time'
 require 'uri'
 
 module ClaudeLimitWatch
-  # Fetches the 5-hour usage from the (undocumented) endpoint Claude Code's
-  # own usage display uses, with Claude Code's login.
+  # Fetches the 5-hour and 7-day usage from the (undocumented) endpoint
+  # Claude Code's own usage display uses, with Claude Code's login.
   module UsageApi
     extend self
 
@@ -33,8 +33,11 @@ module ClaudeLimitWatch
       nil
     end
 
-    # Returns [utilization_percent, resets_at_or_nil], or an error string.
-    def fetch_five_hour
+    # Returns { util:, resets:, util_7d:, resets_7d: } (utilization percents,
+    # and reset times or nil; the 7-day ones are nil when the response has no
+    # 7-day window), or an error string. A response without a 5-hour window
+    # is an error.
+    def fetch_usage
       token = access_token or return 'no Claude Code credentials found'
       req = Net::HTTP::Get.new(URL)
       req['Authorization'] = "Bearer #{token}"
@@ -49,13 +52,26 @@ module ClaudeLimitWatch
       return 'rate-limited by the usage endpoint (HTTP 429); try a longer interval' if res.code == '429'
       return "HTTP #{res.code} from usage endpoint" unless res.is_a?(Net::HTTPSuccess)
 
-      window = JSON.parse(res.body)['five_hour']
-      return 'no 5-hour window in response' unless window.is_a?(Hash) && window['utilization'].is_a?(Numeric)
-
-      resets = window['resets_at'] ? Time.parse(window['resets_at']) : nil
-      [window['utilization'].to_f, resets]
+      parse(res.body)
     rescue => e
       "#{e.class}: #{e.message}"
+    end
+
+    # The usage in a response body, as fetch_usage returns it.
+    def parse(body)
+      json = JSON.parse(body)
+      util, resets = window(json['five_hour'])
+      return 'no 5-hour window in response' unless util
+
+      util_7d, resets_7d = window(json['seven_day'])
+      { util: util, resets: resets, util_7d: util_7d, resets_7d: resets_7d }
+    end
+
+    # [utilization, reset time or nil] for a window in the response, or nil.
+    private def window(json)
+      return unless json.is_a?(Hash) && json['utilization'].is_a?(Numeric)
+
+      [json['utilization'].to_f, json['resets_at'] && Time.parse(json['resets_at'])]
     end
   end
 end

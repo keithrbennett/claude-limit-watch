@@ -52,7 +52,7 @@ previous review killed the recorder. Follow these rules strictly:
     too.
   - In-process code (`ruby -e`, a script) that calls `Recorder.run`,
     `Recorder.start`, `Recorder.ensure_running`, `Recorder.stop` or
-    `UsageApi.fetch_five_hour` without stubbing them. Calling functions
+    `UsageApi.fetch_usage` without stubbing them. Calling functions
     that only compute or format, such as `Recorder.stop_command`, is fine.
 - **These runs are fine,** with the history file in a scratch directory
   as above (except `--help` and `--version`, which need none):

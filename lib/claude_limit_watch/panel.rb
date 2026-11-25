@@ -15,6 +15,10 @@ module ClaudeLimitWatch
     LOCKED_COLOR = [1, 38, 5, 196, 48, 5, 52].freeze # bold red X on a dark red background
     ACCENT_COLOR = [38, 5, 141].freeze # lavender (256-color 141): the title and the Time bar
     TITLE_RULE_COLOR = [38, 5, 97].freeze # a dimmer lavender: the rules on the title line
+    WEEK_WARN_PCT = 80 # the 7-day usage turns yellow from here
+    # The 7-day line at its widest: 100% used, 6 days 23 hours 59 minutes to
+    # go, and a reset on a two-digit day in every time zone (Sep 15, 12:00 UTC).
+    WEEK_WIDEST = [100, (7 * 86_400) - 60, Time.utc(2026, 9, 15, 12)].freeze
 
     # The panel's lines for a snapshot (Snapshot.build, plus :recorder_pid).
     # once: printing a single copy (--once), so use a fixed width, don't
@@ -31,10 +35,26 @@ module ClaudeLimitWatch
       out = []
       blank = -> { out << '' unless out.last.empty? } # a blank line, never two
       legend_drawn = false
-      out << "  #{title_line(rule_w)}"
+      title = title_line(rule_w)
+      out << "  #{title}"
+      week = st[:week]
+      if week && !week[:locked]
+        # The 7-day usage, yellow from WEEK_WARN_PCT: centered under the title
+        # when the title is centered on its rule, else at the left, as it is.
+        text = week_line(week, now, rule_w)
+        text = text.center(rule_w).rstrip if title.include?('━')
+        out << paint("  #{text}", week[:util] >= WEEK_WARN_PCT ? WARN : GRAY)
+      end
       out << ''
-      status = headline(st, now)
-      out.push("  #{status[0]}  #{status[1]}", '') if status
+      if week&.[](:locked)
+        # The 5-hour limit doesn't matter until the 7-day one resets.
+        out << paint('  The 7-day usage limit has been reached.', 1, COLORS[:urgent])
+        out << paint("  It resets in #{resets_in(week[:resets] - now, week[:resets])}.", COLORS[:urgent])
+        p = nil
+      else
+        status = headline(st, now)
+        out.push("  #{status[0]}  #{status[1]}", '') if status
+      end
       if p
         elapsed = WINDOW_MIN - ((p[:resets] - now) / 60.0)
         window_start = p[:resets] - (WINDOW_MIN * 60)
@@ -48,17 +68,25 @@ module ClaudeLimitWatch
         if st[:table] && p[:util] < 100
           out << ''
           since = clock(window_start)
+          # A heading for the bars, right above them: a blank line there would
+          # push the worst case past 24 rows.
           out << paint("  If usage continues at the rate of the last ... (all: since #{since}):", GRAY)
-          out << ''
           out.concat(projection_bar_lines(st[:table], p, bar_w, now))
           out << ''
           out << legend
           legend_drawn = true
         elsif p[:util] < 100
           out << ''
-          start_at = clock(window_start + (Projection::MIN_ELAPSED_MIN * 60))
-          out << paint("  Projections start #{Projection::MIN_ELAPSED_MIN}m into the window " \
-                       "(at #{start_at}). Before then, there is not enough data.", GRAY)
+          # Projections are made as of the latest reading, so once that time
+          # has passed, they start with the next one.
+          start_at = window_start + (Projection::MIN_ELAPSED_MIN * 60)
+          out << if now < start_at
+            paint("  Projections start #{Projection::MIN_ELAPSED_MIN}m into the window " \
+                  "(at #{clock(start_at)}). Before then, there is not enough data.", GRAY)
+          else
+            paint("  The last reading was under #{Projection::MIN_ELAPSED_MIN}m into the window; " \
+                  'projections start with the next one.', GRAY)
+          end
         end
       end
       if st[:error]
@@ -205,6 +233,7 @@ module ClaudeLimitWatch
     private def headline(st, now)
       p = st[:proj]
       return [paint(' NO DATA ', 1, 7, GRAY), 'No readings yet in the history file (below)'] if st[:no_data]
+
       if st[:no_window]
         return [paint(' IDLE ', 1, 7, GRAY), "No active 5-hour window (#{st[:no_window].round}% used)"]
       end
@@ -264,6 +293,33 @@ module ClaudeLimitWatch
         end
       end
       [lines.map(&:rstrip), bar_col] # an empty right text leaves no trailing spaces
+    end
+
+    # The 7-day usage, for the line under the title, width columns wide at
+    # most: how much is used, how long until it resets, and when. With less
+    # room, the time until it resets is left out, then the reset time; the
+    # shortest form may still be cut at the terminal's edge.
+    # The form is chosen by the widest it can be, not by the current text, so
+    # it doesn't change as the minutes tick.
+    private def week_line(week, now, width)
+      @week_widths ||= week_forms(*WEEK_WIDEST).map(&:size)
+      forms = week_forms(week[:util], week[:resets] - now, week[:resets])
+      forms[@week_widths.index { |w| w <= width } || -1]
+    end
+
+    # The 7-day line's forms, longest first, for a usage, the seconds until it
+    # resets, and the reset time.
+    private def week_forms(util, left, resets)
+      used = "7-day: #{util.round}% used"
+      ["#{used} · resets in #{resets_in(left, resets)}",
+        "#{used} · resets in #{dur_short(left)}, #{day_clock(resets)}",
+        "#{used} · resets #{day_clock(resets)}",
+        used]
+    end
+
+    # "1 day, 3 hours and 12 minutes, on Thu Nov 26 at 01:00"
+    private def resets_in(left, resets)
+      "#{dur_words(left)}, on #{date_clock(resets)}"
     end
 
     private def last_reading_text(time, now)

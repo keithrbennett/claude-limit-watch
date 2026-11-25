@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# claude-limit-watch: watch the Claude subscription's 5-hour usage limit.
+# claude-limit-watch: watch the Claude subscription's 5-hour and 7-day usage limits.
 #
 # Two processes:
 # - The recorder (`record`) checks usage every N minutes (default 5) and

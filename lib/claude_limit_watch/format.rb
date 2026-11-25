@@ -29,11 +29,36 @@ module ClaudeLimitWatch
 
     # A time of day, in local time or (with --utc) UTC: "08:00", or with
     # seconds, "08:00:15".
-    # Through UTC, since getlocal leaves a time that's already local as it is,
-    # in whatever zone was local when its local fields were worked out.
     def clock(time, seconds: false)
-      t = Format.utc ? time.getutc : time.getutc.getlocal
-      t.strftime(seconds ? '%H:%M:%S' : '%H:%M')
+      zoned(time).strftime(seconds ? '%H:%M:%S' : '%H:%M')
+    end
+
+    # The day and time, as for clock: "Thu 01:00".
+    def day_clock(time)
+      zoned(time).strftime('%a %H:%M')
+    end
+
+    # The date and time, as for clock: "Thu Nov 26 at 01:00".
+    def date_clock(time)
+      zoned(time).strftime('%a %b %-d at %H:%M')
+    end
+
+    # A short duration, rounded to the minute: "1d 03h 12m", or under a day,
+    # as for dur_m: "3h 12m", "12m", "<1m".
+    def dur_short(seconds)
+      m = (seconds / 60.0).round
+      m >= 1440 ? format('%dd %02dh %02dm', m / 1440, m / 60 % 24, m % 60) : dur_m(seconds)
+    end
+
+    # A duration in words, rounded to the minute: "1 day, 3 hours and 12
+    # minutes", "5 minutes", "less than a minute".
+    def dur_words(seconds)
+      m = (seconds / 60.0).round
+      return 'less than a minute' if m < 1
+
+      parts = [[m / 1440, 'day'], [m / 60 % 24, 'hour'], [m % 60, 'minute']].reject { |n, _| n.zero? }
+      words = parts.map { |n, unit| "#{n} #{unit}#{'s' unless n == 1}" }
+      words.size > 1 ? "#{words[0...-1].join(', ')} and #{words.last}" : words.first
     end
 
     # A note that times are in UTC, for the text that introduces them; empty
@@ -53,6 +78,13 @@ module ClaudeLimitWatch
 
     def home_relative(path)
       path.start_with?("#{Dir.home}/") ? "~#{path[Dir.home.size..]}" : path
+    end
+
+    # The time in the zone times are shown in: local, or UTC with --utc.
+    # Through UTC, since getlocal leaves a time that's already local as it is,
+    # in whatever zone was local when its local fields were worked out.
+    private def zoned(time)
+      Format.utc ? time.getutc : time.getutc.getlocal
     end
 
     # Text cut to width from the left, with "..." in place of what's cut, so

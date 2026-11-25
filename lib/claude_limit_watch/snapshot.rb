@@ -19,6 +19,8 @@ module ClaudeLimitWatch
       end
 
       good = records.reject { |r| r[:error] }
+      week = week(good, now)
+      st[:week] = week if week
       latest = good.last
       return st unless latest
       return st.merge(no_window: latest[:util]) if latest[:resets].nil? || latest[:resets] <= now
@@ -28,6 +30,17 @@ module ClaudeLimitWatch
       args = [prior, latest[:t], latest[:util], latest[:resets]]
       st.merge(proj: Projection.project(*args, rate_window: rate_window),
         table: Projection.projection_rows(*args, rate_window: rate_window))
+    end
+
+    # The 7-day window, from the latest good reading: { util:, resets:,
+    # locked: } (locked: at the limit), or nil when that reading hasn't it
+    # (so an older reading's figure is never shown as current) or its window
+    # has since reset.
+    private def week(good, now)
+      r = good.last
+      return unless r && r[:util_7d] && r[:resets_7d] && r[:resets_7d] > now
+
+      { util: r[:util_7d], resets: r[:resets_7d], locked: r[:util_7d] >= 100 }
     end
   end
 end

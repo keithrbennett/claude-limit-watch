@@ -108,20 +108,35 @@ RSpec.describe ClaudeLimitWatch::Recorder do
   describe '.record_once' do
     before do
       allow(Time).to receive(:now).and_return(NOW + 15)
-      allow(ClaudeLimitWatch::UsageApi).to receive(:fetch_five_hour).and_return([46.0, NOW + 3600])
+      allow(ClaudeLimitWatch::UsageApi).to receive(:fetch_usage)
+        .and_return(util: 46.0, resets: NOW + 3600, util_7d: 85.0, resets_7d: NOW + 86_400)
     end
 
     it 'prints the reading in local time' do
       in_zone('Asia/Singapore') do
-        expect { m.record_once(5) }.to output("16:00:15   46%  window ends 17:00\n").to_stdout
+        expect { m.record_once(5) }.to output("16:00:15   46%  window ends 17:00  7d  85%\n").to_stdout
       end
     end
 
     it 'prints it in UTC with --utc' do
       ClaudeLimitWatch::Format.utc = true
       in_zone('Asia/Singapore') do
-        expect { m.record_once(5) }.to output("08:00:15   46%  window ends 09:00\n").to_stdout
+        expect { m.record_once(5) }.to output("08:00:15   46%  window ends 09:00  7d  85%\n").to_stdout
       end
+    end
+
+    it 'records the 7-day usage, and reads it back' do
+      expect { m.record_once(5) }.to output.to_stdout
+      expect(ClaudeLimitWatch::History.read.last)
+        .to include(util: 46.0, resets: NOW + 3600, util_7d: 85.0, resets_7d: NOW + 86_400)
+    end
+
+    it 'leaves out the 7-day usage when the response has none' do
+      allow(ClaudeLimitWatch::UsageApi).to receive(:fetch_usage)
+        .and_return(util: 46.0, resets: NOW + 3600, util_7d: nil, resets_7d: nil)
+      expect { m.record_once(5) }.to output("08:00:15   46%  window ends 09:00\n").to_stdout
+      expect(File.readlines(ClaudeLimitWatch::History.file).last).not_to include('7d')
+      expect(ClaudeLimitWatch::History.read.last).not_to have_key(:util_7d)
     end
   end
 

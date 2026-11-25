@@ -45,7 +45,7 @@ Prefer project-local tools and scripts (Rake tasks, `bin/` and `script/`) instea
 - If `ruby-lsp` is available, prefer symbol-aware analysis over broad file dumping when the tool supports that workflow.
 
 ## Project Overview
-`claude-limit-watch` is a Ruby gem that watches a Claude subscription's 5-hour usage limit. It reads usage from an undocumented endpoint (the one Claude Code's own usage display uses), with the OAuth token Claude Code stores locally, and sends that token only to `api.anthropic.com`.
+`claude-limit-watch` is a Ruby gem that watches a Claude subscription's 5-hour usage limit, and shows its 7-day one. It reads usage from an undocumented endpoint (the one Claude Code's own usage display uses), with the OAuth token Claude Code stores locally, and sends that token only to `api.anthropic.com`.
 
 ### Recorder and Viewer
 The single executable, `claude-limit-watch`, has two roles:
@@ -64,7 +64,7 @@ The user runs a long-lived background recorder writing to the state directory: `
 - **Never start a recorder, even briefly or under `timeout`.** A recorder calls the real usage API with the user's OAuth token, adding to the user's rate limit, and the viewer starts it detached (`nohup`, own process group), so it outlives the viewer and any `timeout`. So never run:
   - `record`, in any form.
   - The viewer without `--once` or `--no-record` (including `--lines` and output to a pipe, unless with `--once`).
-  - In-process code that calls `Recorder.run`, `Recorder.start`, `Recorder.ensure_running`, `Recorder.stop`, or `UsageApi.fetch_five_hour` without stubbing them. Functions that only compute or format are fine.
+  - In-process code that calls `Recorder.run`, `Recorder.start`, `Recorder.ensure_running`, `Recorder.stop`, or `UsageApi.fetch_usage` without stubbing them (`UsageApi.parse` only reads a response body, so it's fine). Functions that only compute or format are fine.
 - **These runs are fine** (with the history file in a scratch directory, except for `--help` and `--version`): `--help`, `--version`, invalid arguments, `--once`, and the viewer with `--no-record` under `timeout`.
 - **Specs isolate themselves**: they use a temporary history file and stub `Process.spawn`/`Process.kill`. If you change how the specs run, confirm they still do both.
 - **If you start a process anyway, stop it yourself by its pid,** and tell the user.

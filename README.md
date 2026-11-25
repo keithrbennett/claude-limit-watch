@@ -3,7 +3,8 @@
 [![CI](https://github.com/keithrbennett/claude-limit-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/keithrbennett/claude-limit-watch/actions/workflows/ci.yml)
 
 Watch your Claude subscription's 5-hour usage limit from the terminal. It
-records your usage over time and projects when you will reach the limit.
+records your usage over time and projects when you will reach the limit,
+and shows your 7-day (weekly) usage alongside it.
 
 **Unofficial.** claude-limit-watch isn't made, endorsed or supported by
 Anthropic. It reads your usage from an undocumented endpoint, which may
@@ -89,6 +90,17 @@ From top to bottom:
   name isn't letter-spaced, and in a very narrow one the rule is left
   out, then the version, then the name; "times in UTC" goes last. The
   whole panel fits in a 24-row terminal.
+- **7-day usage**, centered under the title (at the left, as the title
+  is, in a terminal too narrow for its rule): how much of the weekly
+  quota is used, how long until it resets, and when
+  (`7-day: 85% used · resets in 1 day, 3 hours and 12 minutes, on Thu Nov 26 at 01:00`),
+  in yellow from 80%. In a narrower terminal it's shorter
+  (`resets in 1d 03h 12m, Thu 01:00`), then the time until it resets is
+  left out, then the reset time. Each form is used only where its
+  longest text fits, so the line doesn't change form as the minutes
+  tick. It's shown when the latest reading has it: not for readings from
+  versions before 0.2.0, nor when the response had no 7-day window, nor
+  just after a weekly reset until the next reading.
 - **Used**: the percentage of the quota used in the current window.
 - **Time**: how much of the 5-hour window has passed (in lavender). Below
   it are the window's start and end times, followed by the current time.
@@ -140,10 +152,17 @@ of `2h`). If there is too little history for a row, the row says so.
   line says when projections will start. Usage often spikes at the start
   of a window, because resumed sessions resend their whole conversation.
   A rate measured during those minutes would predict a limit that you
-  won't actually reach.
+  won't actually reach. Projections are made as of the latest reading, so
+  between the 30-minute mark and the next reading, the line says they
+  start with the next reading.
 - **At the limit**, with no readings yet, or with no active window, a
   status line replaces the projection bars. At the limit, the line is red
   and shows the reset time.
+- **At the 7-day limit**, the 5-hour limit doesn't matter until the
+  7-day one resets. Two red lines replace the 7-day usage, the Used and
+  Time rows and the projections: that the limit has been reached, and
+  when it resets
+  (`It resets in 1 day, 3 hours and 12 minutes, on Thu Nov 26 at 01:00.`).
 
 ### Errors
 
@@ -167,12 +186,18 @@ With `--lines`, or when output isn't a terminal, the viewer prints the
 readings already recorded for the current window, then one line for each
 new reading:
 
-    Time  | Level  | Window       | Ends  | Used | 30m Burn Rate           |  Pace | Outlook
-    22:49 | WARN   | 2:00 of 5:00 | 01:49 |  33% | 30.0%/h (avg 16.2)      |  1.3x | LIMIT at 01:04 (in 2:15), 0:45 before reset
+    Time  | Level  | Window       | Ends  | Used |   7d | 30m Burn Rate           |  Pace | Outlook
+    22:49 | WARN   | 2:00 of 5:00 | 01:49 |  33% |  85% | 30.0%/h (avg 16.2)      |  1.3x | LIMIT at 01:04 (in 2:15), 0:45 before reset
     23:18 | no reading: rate-limited by the usage endpoint (HTTP 429); try a longer interval
 
 Durations are shown as h:mm. At the limit, the Outlook column shows
-`AT LIMIT, resets in h:mm`.
+`AT LIMIT, resets in h:mm`. The **7d** column is the 7-day usage, as the
+panel shows it, so it's `-` when the panel would show none (see
+[Panel](#panel)). At the 7-day limit, the line is URGENT and the Outlook
+column shows `7-DAY LIMIT, resets Thu 01:00 (in 27h 10m)`, since the
+5-hour limit doesn't matter until then. A reading with no active 5-hour
+window shows the 7-day usage after it, or, at the 7-day limit, says so
+in red.
 
 **Pace** is the current rate divided by the rate that would use exactly
 the remaining quota by the end of the window. A pace of 1.0x reaches the
@@ -189,7 +214,7 @@ Each line is colored by its level:
   window ends.
 - **URGENT** (red): you'll reach the limit before the window ends, and
   either the pace is 2x or more or the limit is 20 minutes away or less.
-  Also shown when you're at the limit.
+  Also shown when you're at the limit, or at the 7-day limit.
 
 The thresholds are constants at the top of
 `lib/claude_limit_watch/projection.rb`.
@@ -297,8 +322,12 @@ that the viewer starts uses the viewer's history file.
 The file is in JSON Lines format: one JSON object per reading. Readings are
 only ever appended, so the viewer never sees a partly rewritten file.
 
-    {"t":"2026-11-17T23:19:47+08:00","interval_min":5.0,"util":46.0,"resets_at":"2026-11-17T18:09:59Z"}
+    {"t":"2026-11-17T23:19:47+08:00","interval_min":5.0,"util":46.0,"resets_at":"2026-11-17T18:09:59Z","util_7d":85.0,"resets_7d_at":"2026-11-19T17:00:00Z"}
     {"t":"2026-11-17T23:24:47+08:00","interval_min":5.0,"error":"HTTP 429 from usage endpoint"}
+
+`util` and `resets_at` are the 5-hour window's; `util_7d` and
+`resets_7d_at` are the 7-day window's. Readings from versions before
+0.2.0 have no 7-day fields, and the viewer shows no 7-day usage for them.
 
 The recorder deletes readings older than 7 days. A background recorder
 writes its output to `recorder.log`, in the same directory as the history
@@ -326,8 +355,9 @@ will start a recorder running the new version.
 - **Scope**: utilization is account-wide. It includes every Claude Code
   session running at the same time, and any other tools that use your
   Claude login.
-- **History**: the endpoint returns only the current utilization and the
-  window's reset time. All history comes from the recorder's own readings.
+- **History**: the endpoint returns only the current utilization and
+  reset time of each window (5-hour and 7-day). All history comes from
+  the recorder's own readings.
 - **Rate over the last N minutes**: calculated from the reading closest to
   N minutes ago. That reading may be up to 10% older than N minutes (at
   least 1 minute older is always allowed). The history must cover at least

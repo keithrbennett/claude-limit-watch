@@ -2,6 +2,27 @@
 
 ## 0.2.0 (unreleased)
 
+### 7-day usage
+
+- **The 7-day (weekly) usage is recorded and shown.** It comes from the
+  same request as the 5-hour usage, so there's no extra API call. The
+  history file gets `util_7d` and `resets_7d_at` fields; older readings
+  without them still load.
+- **On the panel**, a line centered under the title shows how much is
+  used, how long until it resets, and when
+  (`7-day: 85% used · resets in 1 day, 3 hours and 12 minutes, on Thu Nov 26 at 01:00`),
+  in yellow from 80%, shorter in narrower terminals. To keep the panel
+  within 24 rows, the projection bars' heading no longer has a blank line
+  under it.
+- **At the 7-day limit**, two red lines replace the 7-day line and the
+  5-hour rows: that
+  the limit has been reached, and when it resets, in days, hours and
+  minutes, and as a date and time.
+- **`--lines`** has a `7d` column, and at the 7-day limit its Outlook
+  says so. A reading with no active 5-hour window shows the 7-day usage
+  too, in red at the limit. The recorder's log lines include it, and its
+  startup line and the `--lines` intro name both limits.
+
 ### Panel
 
 - **A one-line title.** The 3-row framed banner is replaced by one line:
@@ -16,6 +37,9 @@
   and project page line is gone from the panel; the version is on the
   title line, and both are still printed on quitting, after `--once`'s
   panel, and in `--help`.
+- **The early-window message no longer names a time that has passed.**
+  Projections are made as of the latest reading, so between the 30-minute
+  mark and the next reading it now says they start with the next reading.
 - **The no-data message no longer shows the history file's path,**
   which is now on the bottom line, and "no readings yet" is no longer
   repeated at the top.

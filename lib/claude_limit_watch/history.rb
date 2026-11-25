@@ -62,19 +62,25 @@ module ClaudeLimitWatch
       File.rename(tmp, file)
     end
 
-    # Readings as hashes: { t:, interval:, util:, resets: } or { t:, interval:, error: }.
-    # Unparseable lines (e.g. one being written right now) are skipped.
+    # Readings as hashes: { t:, interval:, util:, resets: } (plus util_7d: and
+    # resets_7d: when the reading has the 7-day window, which readings from
+    # versions before 0.2.0 don't), or { t:, interval:, error: }. Unparseable lines (e.g. one
+    # being written right now) are skipped.
     def read
       return [] unless File.exist?(file)
 
       File.readlines(file).map do |line|
         h = JSON.parse(line)
         rec = { t: Time.parse(h['t']), interval: h['interval_min'].to_f }
-        if h['error']
-          rec.merge(error: h['error'])
-        else
-          rec.merge(util: h['util'].to_f, resets: h['resets_at'] && Time.parse(h['resets_at']))
+        next rec.merge(error: h['error']) if h['error']
+
+        rec[:util] = h['util'].to_f
+        rec[:resets] = h['resets_at'] && Time.parse(h['resets_at'])
+        if h['util_7d']
+          rec[:util_7d] = h['util_7d'].to_f
+          rec[:resets_7d] = h['resets_7d_at'] && Time.parse(h['resets_7d_at'])
         end
+        rec
       rescue
         nil
       end.compact

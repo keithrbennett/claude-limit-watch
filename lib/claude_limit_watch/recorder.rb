@@ -30,7 +30,7 @@ module ClaudeLimitWatch
       # that started the viewer doesn't stop a background recorder.
       %w[INT TERM].each { |sig| trap(sig) { exit 0 } }
 
-      puts "Recording the Claude 5-hour usage every #{num(minutes)}m to #{History.file} " \
+      puts "Recording the Claude 5-hour and 7-day usage every #{num(minutes)}m to #{History.file} " \
            "(pid #{Process.pid}).#{zone_note} Stop with Ctrl-C or: #{stop_command(Process.pid)}"
       last_prune = nil
       loop do
@@ -48,17 +48,21 @@ module ClaudeLimitWatch
     # history file and the log.
     def record_once(minutes)
       now = Time.now
-      reading = UsageApi.fetch_five_hour
+      reading = UsageApi.fetch_usage
       stamp = clock(now, seconds: true)
       if reading.is_a?(String)
         History.append('t' => now.iso8601, 'interval_min' => minutes, 'error' => reading)
         puts "#{stamp}  error: #{reading}"
       else
-        util, resets = reading
-        History.append('t' => now.iso8601, 'interval_min' => minutes, 'util' => util,
-          'resets_at' => resets&.utc&.iso8601)
-        window = resets ? "window ends #{clock(resets)}" : 'no active window'
-        puts "#{stamp}  #{format('%3d%%', util.round)}  #{window}"
+        rec = { 't' => now.iso8601, 'interval_min' => minutes, 'util' => reading[:util],
+                'resets_at' => reading[:resets]&.utc&.iso8601 }
+        if reading[:util_7d]
+          rec.merge!('util_7d' => reading[:util_7d], 'resets_7d_at' => reading[:resets_7d]&.utc&.iso8601)
+        end
+        History.append(rec)
+        window = reading[:resets] ? "window ends #{clock(reading[:resets])}" : 'no active window'
+        week = reading[:util_7d] ? "  7d #{format('%3d%%', reading[:util_7d].round)}" : ''
+        puts "#{stamp}  #{format('%3d%%', reading[:util].round)}  #{window}#{week}"
       end
     end
 

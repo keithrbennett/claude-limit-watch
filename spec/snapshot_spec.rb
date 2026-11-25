@@ -58,4 +58,33 @@ RSpec.describe ClaudeLimitWatch::Snapshot, '.build' do
     expect(st[:error_at]).to eq(NOW + 60)
     expect(st[:proj][:util]).to be_within(1e-9).of(60.0) # from the last good reading
   end
+
+  describe 'the 7-day usage' do
+    def with_week(records, util, resets)
+      records.map { |r| r.merge(util_7d: util, resets_7d: resets) }
+    end
+
+    it 'comes from the latest good reading, even with no active 5-hour window' do
+      idle = { t: NOW - 60, interval: 5.0, util: 3.0, resets: NOW - 120 }
+      [window_records, [idle]].each do |records|
+        st = snap(with_week(records, 85.0, NOW + 86_400) + [error_record(NOW)], NOW)
+        expect(st[:week]).to eq(util: 85.0, resets: NOW + 86_400, locked: false)
+      end
+    end
+
+    it "is left out when the latest good reading hasn't it, so an older figure isn't shown as current" do
+      records = with_week(window_records[0...-1], 85.0, NOW + 86_400) + [window_records.last]
+      expect(snap(records, NOW)).not_to have_key(:week)
+    end
+
+    it 'is locked at 100%' do
+      expect(snap(with_week(window_records, 100.0, NOW + 86_400), NOW)[:week][:locked]).to be(true)
+    end
+
+    it 'is left out for readings without it (from before 0.2.0), or once its window has reset' do
+      expect(snap(window_records, NOW)).not_to have_key(:week)
+      expect(snap(with_week(window_records, 100.0, NOW - 1), NOW)).not_to have_key(:week)
+      expect(snap(with_week(window_records, 100.0, nil), NOW)).not_to have_key(:week)
+    end
+  end
 end

@@ -46,6 +46,44 @@ RSpec.describe ClaudeLimitWatch::Format do
     end
   end
 
+  describe '.day_clock and .date_clock' do
+    it 'show the day (and date) in local time, or UTC with --utc' do
+      in_zone('Asia/Singapore') do
+        expect([m.day_clock(NOW), m.date_clock(NOW)]).to eq(['Fri 16:00', 'Fri Jan 15 at 16:00'])
+        m.utc = true
+        expect([m.day_clock(NOW + (17 * 3600)), m.date_clock(NOW + (17 * 3600))])
+          .to eq(['Sat 01:00', 'Sat Jan 16 at 01:00'])
+      end
+    end
+  end
+
+  describe '.dur_short' do
+    it 'shows days, hours and minutes, or under a day as dur_m does' do
+      { 29 => '<1m', 720 => '12m', 3600 + 300 => '1h 05m', 86_400 + (3 * 3600) + 720 => '1d 03h 12m',
+        (7 * 86_400) - 60 => '6d 23h 59m' }.each do |seconds, text|
+        expect(m.dur_short(seconds)).to eq(text), "for #{seconds}s"
+      end
+    end
+  end
+
+  describe '.dur_words' do
+    it 'spells out days, hours and minutes, leaving out zeros' do
+      {
+        0                         => 'less than a minute',
+        29                        => 'less than a minute',
+        60                        => '1 minute',
+        (5 * 60) + 29             => '5 minutes',
+        3600                      => '1 hour',
+        (2 * 3600) + 60           => '2 hours and 1 minute',
+        86_400                    => '1 day',
+        86_400 + (3 * 3600) + 720 => '1 day, 3 hours and 12 minutes',
+        (2 * 86_400) + 300        => '2 days and 5 minutes',
+      }.each do |seconds, words|
+        expect(m.dur_words(seconds)).to eq(words), "for #{seconds}s"
+      end
+    end
+  end
+
   describe '.shorten_left' do
     it 'cuts text from the left, with "..." in place of what is cut' do
       {

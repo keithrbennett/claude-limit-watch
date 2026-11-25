@@ -35,10 +35,14 @@ end
 def write_history(file)
   now = Time.now
   resets = now + ((300 - ELAPSED) * 60)
+  resets_7d = now + (((3 * 24) + 4) * 3600) # the 7-day window resets in 3 days 4 hours
   lines = (INTERVAL..ELAPSED).step(INTERVAL).map do |min|
     t = now - ((ELAPSED - min) * 60)
-    JSON.generate('t' => t.iso8601, 'interval_min' => INTERVAL.to_f, 'util' => util_at(min).to_f,
-      'resets_at' => resets.utc.iso8601)
+    util = util_at(min)
+    JSON.generate('t' => t.iso8601, 'interval_min' => INTERVAL.to_f, 'util' => util.to_f,
+      'resets_at' => resets.utc.iso8601,
+      'util_7d' => (52 + (util / 6)).to_f, # rising with the 5-hour usage, to 62%
+      'resets_7d_at' => resets_7d.utc.iso8601)
   end
   tmp = "#{file}.tmp"
   File.write(tmp, lines.join("\n") + "\n")

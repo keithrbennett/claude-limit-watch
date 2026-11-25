@@ -25,12 +25,21 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       'stale'                         => [window_records, NOW + 900, 1234],
       'failed and stale'              => [worst_records, worst_now, 1234],
       'failed and stale, no recorder' => [worst_records, worst_now, nil],
+      'with the 7-day usage'          => [with_week(worst_records, 85.0), worst_now, 1234],
+      'at the 7-day limit'            => [with_week(worst_records, 100.0), worst_now, 1234],
     }
   end
 
-  it 'shows the normal panel in 19 rows' do
+  # The records, with the 7-day usage at util, resetting 17 hours after NOW
+  # (Sat 01:00 UTC).
+  def with_week(records, util)
+    records.map { |r| r[:error] ? r : r.merge(util_7d: util, resets_7d: NOW + (17 * 3600)) }
+  end
+
+  it 'shows the normal panel in 19 rows, or 18 without the 7-day usage' do
+    expect(panel(with_week(window_records, 50.0), NOW).size).to eq(19)
     lines = panel(window_records, NOW)
-    expect(lines.size).to eq(19)
+    expect(lines.size).to eq(18)
     expect(lines.first).to include(spaced_name)
     expect(lines)
       .to include(a_string_starting_with('  q to quit · stop the recorder with: claude-limit-watch stop '))
@@ -51,7 +60,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
   end
 
   it 'fits 24 rows in every state' do
-    expect(panel(worst_records, worst_now, rate_window: 45).size).to eq(24) # the tallest
+    expect(panel(with_week(worst_records, 85.0), worst_now, rate_window: 45).size).to eq(24) # the tallest
     states.each do |state, (records, now, pid)|
       size = panel(records, now, pid: pid, rate_window: 45).size
       expect(size).to be <= 24, "#{size} rows in the #{state} panel"
@@ -114,6 +123,89 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       rule = "\e[38;5;97m#{'━' * 20}\e[0m"
       expect(m.lines(st, NOW).first)
         .to eq("  #{rule}  \e[1;38;5;141m#{spaced_name}\e[0m   \e[90mv0.2.0.pre.1\e[0m  #{rule}")
+    end
+  end
+
+  describe 'the 7-day usage' do
+    it 'goes under the title, centered on it: how much is used, how long until it resets, and when' do
+      lines = panel(with_week(window_records, 85.0), NOW + 720)
+      text = '7-day: 85% used · resets in 16 hours and 48 minutes, on Sat Jan 16 at 01:00' # 76 wide
+      expect(lines[1]).to eq("  #{' ' * 9}#{text}") # 9 spaces either side, within the 94-wide title
+      expect(lines[2, 2]).to eq(['', "  Used   #{'█' * 30}#{'░' * 20}   60%"])
+    end
+
+    # Each form is used from the width its longest text needs ("7-day: 100%
+    # used · resets in 6 days, 23 hours and 59 minutes, on Wed Sep 30 at
+    # 23:59" for the first), so the form doesn't change as the minutes tick.
+    # Below 53 columns, the title has no rule, so the line is at the left.
+    it 'shortens in narrower terminals, centered while the title is' do
+      full = '7-day: 85% used · resets in 16 hours and 48 minutes, on Sat Jan 16 at 01:00'
+      short = '7-day: 85% used · resets in 16h 48m, Sat 01:00'
+      day = '7-day: 85% used · resets Sat 01:00'
+      {
+        120 => [full, true], 86 => [full, true], 85 => [short, true], 53 => [short, true],
+        52 => [short, false], 51 => [day, false], 37 => [day, false], 36 => ['7-day: 85% used', false]
+      }.each do |cols, (text, centered)|
+        title_w = [96, cols].min - 2
+        expect(panel(with_week(window_records, 85.0), NOW + 720, cols: cols)[1])
+          .to eq("  #{centered ? text.center(title_w).rstrip : text}"), "at #{cols} columns"
+      end
+      expect(panel(with_week(window_records, 85.0), NOW, cols: 10)[1]).to eq('  7-day: 8') # cut at the edge
+    end
+
+    it 'keeps its form at 80 columns whatever the minutes' do
+      { 0 => '17h 00m', 60 => '16h 59m', 720 => '16h 48m', 3540 => '16h 01m' }.each do |since, left|
+        expect(panel(with_week(window_records, 85.0), NOW + since, cols: 80)[1].strip)
+          .to eq("7-day: 85% used · resets in #{left}, Sat 01:00")
+      end
+      resets = NOW + (2 * 86_400) + (3 * 3600) + 420 # in 2d 03h 07m
+      days = with_week(window_records, 85.0).map { |r| r.merge(resets_7d: resets) }
+      expect(panel(days, NOW, cols: 80)[1].strip).to eq('7-day: 85% used · resets in 2d 03h 07m, Sun 11:07')
+    end
+
+    it 'chooses its form by widths that are the same in every time zone' do
+      widths = %w[UTC Asia/Singapore Pacific/Kiritimati America/Los_Angeles].map do |tz|
+        in_zone(tz) { m.send(:week_forms, *m::WEEK_WIDEST).map(&:size) }
+      end
+      expect(widths.uniq).to eq([[84, 50, 35, 16]])
+    end
+
+    it 'is left out at the 7-day limit, where the red lines say it all' do
+      expect(panel(with_week(window_records, 100.0), NOW).grep(/7-day: /)).to be_empty
+    end
+
+    it 'is yellow from 80%, and gray below' do
+      allow($stdout).to receive(:tty?).and_return(true)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+      allow(m).to receive(:term_width).and_return(120)
+      { 79.0 => "\e[90m", 80.0 => "\e[38;5;136m" }.each do |util, color|
+        st = ClaudeLimitWatch::Snapshot.build(with_week(window_records, util), NOW, rate_window: 30)
+        expect(m.lines(st, NOW)[1]).to match(/\A#{Regexp.escape(color)} +7-day: #{util.round}% used/)
+      end
+    end
+
+    it 'shows with no active 5-hour window too' do
+      idle = with_week([{ t: NOW, interval: 5.0, util: 3.0, resets: NOW - 60 }], 85.0)
+      expect(panel(idle, NOW)).to include(a_string_matching(/\A +7-day: 85% used/),
+        '   IDLE   No active 5-hour window (3% used)')
+    end
+
+    it 'replaces the 5-hour rows with two red lines once its limit is reached' do
+      lines = panel(with_week(window_records, 100.0), NOW + 3600 + 720)
+      expect(lines[2, 2]).to eq(['  The 7-day usage limit has been reached.',
+        '  It resets in 15 hours and 48 minutes, on Sat Jan 16 at 01:00.'])
+      expect(lines.grep(/Used|Time|time so far|AT LIMIT/)).to be_empty
+    end
+
+    it 'draws them in red, the first one bold' do
+      allow($stdout).to receive(:tty?).and_return(true)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+      allow(m).to receive(:term_width).and_return(120)
+      st = ClaudeLimitWatch::Snapshot.build(with_week(window_records, 100.0), NOW, rate_window: 30)
+      expect(m.lines(st, NOW)[2, 2]).to all(start_with("\e[")).and(all(include('38;5;196')))
+      expect(m.lines(st, NOW)[2]).to start_with("\e[1;38;5;196m")
     end
   end
 
@@ -353,8 +445,16 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
 
   it 'shows no projections early in the window' do
     lines = panel(window_records(elapsed: 20, knots: [[0, 0], [20, 5]]), NOW)
-    expect(lines.grep(/Projections start 30m into the window/)).not_to be_empty
+    expect(lines.grep(/Projections start 30m into the window \(at 08:10\)/)).not_to be_empty
     expect(lines.grep(/time so far/)).to be_empty
+  end
+
+  it 'says projections start with the next reading once 30m have passed, but no reading since' do
+    # 31m into the window, with the last reading at 25m.
+    lines = panel(window_records(elapsed: 28, knots: [[0, 0], [28, 5]]), NOW + 180)
+    expect(lines)
+      .to include('  The last reading was under 30m into the window; projections start with the next one.')
+    expect(lines.grep(/time so far|\(at /)).to be_empty
   end
 
   it 'shows the reset time at the limit, without projections' do

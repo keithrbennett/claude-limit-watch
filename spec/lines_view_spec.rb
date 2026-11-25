@@ -5,30 +5,30 @@ RSpec.describe ClaudeLimitWatch::LinesView do
   let(:m) { described_class }
 
   describe '.format_line' do
-    def fields(util, rate, reset_min)
+    def fields(util, rate, reset_min, week: nil)
       history = (5..60).step(5).map { |min| { t: NOW - (min * 60), util: util - (min * rate) } }
       p = ClaudeLimitWatch::Projection.project(history, NOW, util, NOW + (reset_min * 60), rate_window: 30)
-      ClaudeLimitWatch::LinesView.format_line(NOW, p).split('|').map(&:strip)
+      ClaudeLimitWatch::LinesView.format_line(NOW, p, week).split('|').map(&:strip)
     end
 
-    it 'formats an OK line' do
+    it 'formats an OK line, with a dash for a reading without the 7-day usage' do
       expect(fields(50.0, 0.2, 100))
-        .to eq(['08:00', 'OK', '3:20 of 5:00', '09:40', '50%', '12.0%/h (avg 15.0)', '0.4x',
+        .to eq(['08:00', 'OK', '3:20 of 5:00', '09:40', '50%', '-', '12.0%/h (avg 15.0)', '0.4x',
           '~30% left at reset'])
     end
 
     it 'formats a WARN line' do
       f = fields(50.0, 0.6, 100)
       expect(f[1]).to eq('WARN')
-      expect(f[7]).to eq('LIMIT at 09:23 (in 1:23), 0:17 before reset')
+      expect(f[8]).to eq('LIMIT at 09:23 (in 1:23), 0:17 before reset')
     end
 
     it 'shows times in local time, or UTC with --utc' do
       in_zone('Asia/Singapore') do
-        expect(fields(50.0, 0.6, 100).values_at(0, 3, 7))
+        expect(fields(50.0, 0.6, 100).values_at(0, 3, 8))
           .to eq(['16:00', '17:40', 'LIMIT at 17:23 (in 1:23), 0:17 before reset'])
         ClaudeLimitWatch::Format.utc = true
-        expect(fields(50.0, 0.6, 100).values_at(0, 3, 7))
+        expect(fields(50.0, 0.6, 100).values_at(0, 3, 8))
           .to eq(['08:00', '09:40', 'LIMIT at 09:23 (in 1:23), 0:17 before reset'])
       end
     end
@@ -36,7 +36,36 @@ RSpec.describe ClaudeLimitWatch::LinesView do
     it 'formats a line at the limit' do
       f = fields(100.0, 0.5, 30)
       expect(f[1]).to eq('URGENT')
-      expect(f[7]).to eq('AT LIMIT, resets in 0:30')
+      expect(f[8]).to eq('AT LIMIT, resets in 0:30')
+    end
+
+    it 'shows the 7-day usage' do
+      expect(fields(50.0, 0.2, 100, week: { util: 85.0, resets: NOW + 86_400 })[5]).to eq('85%')
+    end
+
+    it 'gives the 7-day limit as the outlook when it is reached, since the 5-hour one does not matter' do
+      week = { util: 100.0, resets: NOW + (27 * 3600) + 600, locked: true } # Sat 11:10
+      f = fields(50.0, 0.2, 100, week: week)
+      expect(f.values_at(1, 5, 8)).to eq(['URGENT', '100%', '7-DAY LIMIT, resets Sat 11:10 (in 27h 10m)'])
+    end
+  end
+
+  describe '.idle_line' do
+    let(:rec) { { t: NOW, util: 3.0 } }
+
+    it 'shows the 7-day usage with no active 5-hour window' do
+      expect(m.idle_line(rec, nil)).to eq('08:00 | no active 5-hour window (3% used)')
+      expect(m.idle_line(rec, { util: 85.0, resets: NOW + 3600, locked: false }))
+        .to eq('08:00 | no active 5-hour window (3% used) · 7-day 85%')
+    end
+
+    it 'says so, in red, at the 7-day limit' do
+      allow($stdout).to receive(:tty?).and_return(true)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+      expect(m.idle_line(rec, { util: 100.0, resets: NOW + (27 * 3600) + 600, locked: true }))
+        .to eq("\e[38;5;196m08:00 | no active 5-hour window (3% used), " \
+               "7-DAY LIMIT, resets Sat 11:10 (in 27h 10m)\e[0m")
     end
   end
 
@@ -86,8 +115,8 @@ RSpec.describe ClaudeLimitWatch::LinesView do
 
   describe '.run' do
     # Runs one pass of the loop: its sleep ends it.
-    def run_once(record:, pid:)
-      allow(ClaudeLimitWatch::History::Cache).to receive(:new).and_return(double(records: window_records))
+    def run_once(record:, pid:, records: window_records)
+      allow(ClaudeLimitWatch::History::Cache).to receive(:new).and_return(double(records: records))
       allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(pid)
       allow(Time).to receive(:now).and_return(NOW + 900)
       view = ClaudeLimitWatch::LinesView
@@ -121,6 +150,18 @@ RSpec.describe ClaudeLimitWatch::LinesView do
       end
     end
 
+    it 'shows the 7-day usage as the panel does: not once its window has reset, or without a reset time' do
+      [NOW - (300 * 60), nil].each do |resets_7d| # reset before every reading; 100% would otherwise be URGENT
+        records = window_records.map { |r| r.merge(util_7d: 100.0, resets_7d: resets_7d) }
+        lines = run_once(record: false, pid: nil, records: records).grep(/\A\d\d:\d\d \| (OK|WARN|URGENT)/)
+        expect(lines.map { |l| l.split(' | ')[5] }.uniq).to eq(['   -'])
+        expect(lines.grep(/7-DAY/)).to be_empty
+      end
+      records = window_records.map { |r| r.merge(util_7d: 100.0, resets_7d: NOW + 3600) }
+      locked = run_once(record: false, pid: nil, records: records).grep(/URGENT .* 7-DAY LIMIT/)
+      expect(locked.size).to eq(window_records.size)
+    end
+
     it 'passes --no-record and the running recorder to the warning' do
       expect(run_once(record: false, pid: nil).last).to eq('08:15 | no new readings for 15m.')
       expect(run_once(record: false, pid: 4321).last)
@@ -129,8 +170,8 @@ RSpec.describe ClaudeLimitWatch::LinesView do
   end
 
   describe '.header' do
-    it 'names the rate window' do
-      expect(m.header(45)).to include('45m Burn Rate')
+    it 'names the rate window and the 7-day column' do
+      expect(m.header(45)).to include('| Used |   7d | 45m Burn Rate')
     end
   end
 end
