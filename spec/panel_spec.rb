@@ -117,12 +117,21 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
   end
 
-  it 'shows the history file on a line of its own, so a long path leaves the recorder line whole' do
-    long = "/#{'very-long-directory/' * 6}history.jsonl"
-    allow(ClaudeLimitWatch::History).to receive(:file).and_return(long)
-    lines = panel(window_records, NOW, pid: nil, cols: 80)
-    expect(lines[-2]).to start_with('  Recorder not running. History file:')
-    expect(lines[-1]).to eq("  #{long}"[0, 80])
+  describe 'a history file path too long for the terminal' do
+    let(:long) { "/#{'very-long-directory/' * 6}history.jsonl" } # 134 characters
+
+    before { allow(ClaudeLimitWatch::History).to receive(:file).and_return(long) }
+
+    it 'goes on a line of its own, shortened from the left, leaving the recorder line whole' do
+      lines = panel(window_records, NOW, pid: nil, cols: 80)
+      expect(lines[-2]).to start_with('  Recorder not running. History file:')
+      expect(lines[-1]).to eq("  ...#{long[-75..]}").and have_attributes(size: 80)
+      expect(lines[-1]).to end_with('/history.jsonl')
+    end
+
+    it 'is whole with --once, for copying' do
+      expect(panel(window_records, NOW, pid: nil, once: true)[-1]).to eq("  #{long}")
+    end
   end
 
   it 'leaves out quitting with --once' do

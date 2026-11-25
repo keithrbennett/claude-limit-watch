@@ -45,4 +45,20 @@ RSpec.describe ClaudeLimitWatch::Format do
       expect(m.zone_note).to eq(' Times are in UTC.')
     end
   end
+
+  describe '.shorten_left' do
+    it 'cuts text from the left, with "..." in place of what is cut' do
+      {
+        ['~/a/b/history.jsonl', 30] => '~/a/b/history.jsonl', # fits
+        ['~/a/b/history.jsonl', 19] => '~/a/b/history.jsonl', # just fits
+        ['~/a/b/history.jsonl', 18] => '...b/history.jsonl',
+        ['~/a/b/history.jsonl', 4]  => '...l',
+        ['~/a/b/history.jsonl', 3]  => '...',
+        ['~/a/b/history.jsonl', 2]  => '..',
+        ['~/a/b/history.jsonl', 0]  => '',
+      }.each do |(text, width), expected|
+        expect(m.shorten_left(text, width)).to eq(expected), "at width #{width}"
+      end
+    end
+  end
 end

@@ -98,13 +98,16 @@ module ClaudeLimitWatch
           'q to quit'
         end
       # Then the recorder's status, and when it last took a reading. The
-      # history file gets a line of its own, since its path can be long.
+      # history file gets a line of its own, since its path can be long; one
+      # too long for the terminal loses its start, not its file name. With
+      # --once it's whole, for copying.
       bottom, bar_col = columns([[footer, now_text], [recorder, last_reading]], rule_w)
       rule = '─' * rule_w
       rule[bar_col] = '┬' if bar_col # joins the bar below it
       out << paint("  #{rule}", GRAY)
       out.concat(bottom.map { |l| paint("  #{l}", GRAY) })
-      out << paint("  #{home_relative(History.file)}", GRAY)
+      path = home_relative(History.file)
+      out << paint("  #{once ? path : shorten_left(path, w - 2)}", GRAY)
       return out if once
 
       out.map { |l| fit(l, w) }

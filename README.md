@@ -102,7 +102,9 @@ From top to bottom:
   the right, after a vertical bar, are the current time and when the
   last reading was. In a terminal too narrow for the bar, they're
   right-aligned without it, or left out if they'd be cut off. The history
-  file is on a line of its own because its path can be long. With
+  file is on a line of its own because its path can be long; a path too
+  long for the terminal is shortened from the left, shown by `...`, so
+  the file name stays visible (`--once` shows it whole). With
   `--once`, the text about quitting is left out, but the current time is
   still shown.
 

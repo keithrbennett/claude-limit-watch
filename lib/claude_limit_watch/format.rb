@@ -54,5 +54,14 @@ module ClaudeLimitWatch
     def home_relative(path)
       path.start_with?("#{Dir.home}/") ? "~#{path[Dir.home.size..]}" : path
     end
+
+    # Text cut to width from the left, with "..." in place of what's cut, so
+    # its end (a path's file name, say) stays visible.
+    def shorten_left(text, width)
+      return text if text.size <= width
+      return '...'[0, [width, 0].max] if width <= 3
+
+      "...#{text[(text.size - width + 3)..]}"
+    end
   end
 end
