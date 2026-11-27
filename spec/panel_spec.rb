@@ -12,7 +12,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
 
   # Each state the panel can be in: [records, now, recorder pid].
   let(:states) do
-    idle = { t: NOW, interval: 5.0, util: 3.0, resets: NOW - 60 }
+    idle = idle_record(NOW, 3.0)
     {
       'normal'                        => [window_records, NOW, 1234],
       'no data'                       => [[], NOW, 1234],
@@ -28,12 +28,6 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
       'with the 7-day usage'          => [with_week(worst_records, 85.0), worst_now, 1234],
       'at the 7-day limit'            => [with_week(worst_records, 100.0), worst_now, 1234],
     }
-  end
-
-  # The records, with the 7-day usage at util, resetting 17 hours after NOW
-  # (Sat 01:00 UTC).
-  def with_week(records, util)
-    records.map { |r| r[:error] ? r : r.merge(util_7d: util, resets_7d: NOW + (17 * 3600)) }
   end
 
   it 'shows the normal panel in 19 rows, or 18 without the 7-day usage' do
@@ -115,13 +109,8 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
 
     it 'draws the name in bold lavender, the rules in dimmer lavender, and the rest in gray' do
-      allow($stdout).to receive(:tty?).and_return(true)
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
-      allow(m).to receive(:term_width).and_return(120)
-      st = ClaudeLimitWatch::Snapshot.build(window_records, NOW, rate_window: 30).merge(recorder_pid: 1234)
       rule = "\e[38;5;97m#{'━' * 20}\e[0m"
-      expect(m.lines(st, NOW).first)
+      expect(panel(window_records, NOW, ansi: true).first)
         .to eq("  #{rule}  \e[1;38;5;141m#{spaced_name}\e[0m   \e[90mv0.2.0.pre.1\e[0m  #{rule}")
     end
   end
@@ -159,7 +148,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
           .to eq("7-day: 85% used · resets in #{left}, Sat 01:00")
       end
       resets = NOW + (2 * 86_400) + (3 * 3600) + 420 # in 2d 03h 07m
-      days = with_week(window_records, 85.0).map { |r| r.merge(resets_7d: resets) }
+      days = with_week(window_records, 85.0, resets: resets)
       expect(panel(days, NOW, cols: 80)[1].strip).to eq('7-day: 85% used · resets in 2d 03h 07m, Sun 11:07')
     end
 
@@ -175,18 +164,14 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
 
     it 'is yellow from 80%, and gray below' do
-      allow($stdout).to receive(:tty?).and_return(true)
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
-      allow(m).to receive(:term_width).and_return(120)
       { 79.0 => "\e[90m", 80.0 => "\e[38;5;136m" }.each do |util, color|
-        st = ClaudeLimitWatch::Snapshot.build(with_week(window_records, util), NOW, rate_window: 30)
-        expect(m.lines(st, NOW)[1]).to match(/\A#{Regexp.escape(color)} +7-day: #{util.round}% used/)
+        expect(panel(with_week(window_records, util), NOW, ansi: true)[1])
+          .to match(/\A#{Regexp.escape(color)} +7-day: #{util.round}% used/)
       end
     end
 
     it 'shows with no active 5-hour window too' do
-      idle = with_week([{ t: NOW, interval: 5.0, util: 3.0, resets: NOW - 60 }], 85.0)
+      idle = with_week([idle_record(NOW, 3.0)], 85.0)
       expect(panel(idle, NOW)).to include(a_string_matching(/\A +7-day: 85% used/),
         '   IDLE   No active 5-hour window (3% used)')
     end
@@ -199,13 +184,9 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
     end
 
     it 'draws them in red, the first one bold' do
-      allow($stdout).to receive(:tty?).and_return(true)
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
-      allow(m).to receive(:term_width).and_return(120)
-      st = ClaudeLimitWatch::Snapshot.build(with_week(window_records, 100.0), NOW, rate_window: 30)
-      expect(m.lines(st, NOW)[2, 2]).to all(start_with("\e[")).and(all(include('38;5;196')))
-      expect(m.lines(st, NOW)[2]).to start_with("\e[1;38;5;196m")
+      lines = panel(with_week(window_records, 100.0), NOW, ansi: true)
+      expect(lines[2, 2]).to all(start_with("\e[")).and(all(include('38;5;196')))
+      expect(lines[2]).to start_with("\e[1;38;5;196m")
     end
   end
 
@@ -319,12 +300,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
   end
 
   it 'shows warnings in yellow, and secondary text in gray' do
-    allow($stdout).to receive(:tty?).and_return(true)
-    allow(ENV).to receive(:[]).and_call_original
-    allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
-    allow(m).to receive(:term_width).and_return(120)
-    st = ClaudeLimitWatch::Snapshot.build(worst_records, worst_now, rate_window: 30).merge(recorder_pid: 1234)
-    lines = m.lines(st, worst_now)
+    lines = panel(worst_records, worst_now, ansi: true)
     expect(lines).to include(a_string_starting_with("\e[38;5;136m  Last check failed"),
       a_string_starting_with("\e[38;5;136m  No new readings"),
       a_string_starting_with("\e[90m  q to quit"))
@@ -435,9 +411,7 @@ RSpec.describe ClaudeLimitWatch::Panel, '.lines' do
   end
 
   it 'shows the time left, and the text of a rate that lasts, in green' do
-    allow($stdout).to receive(:tty?).and_return(true)
-    allow(ENV).to receive(:[]).and_call_original
-    allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+    with_colors
     row = { label: '1h', end_pct: 90.0 } # doesn't reach the limit
     line = m.projection_bar_lines([row], { resets: NOW + (100 * 60) }, 50, NOW).first
     expect(line).to include("\e[38;5;34m▒", "\e[38;5;34mlimit not reached · 90% at the end")

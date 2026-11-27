@@ -25,7 +25,7 @@ module ClaudeLimitWatch
       return st unless latest
       return st.merge(no_window: latest[:util]) if latest[:resets].nil? || latest[:resets] <= now
 
-      window = good.select { |r| r[:resets] && (r[:resets] - latest[:resets]).abs < 60 }
+      window = good.select { |r| r[:resets] && Projection.same_window?(r[:resets], latest[:resets]) }
       prior = window[0...-1].map { |r| { t: r[:t], util: r[:util] } }
       args = [prior, latest[:t], latest[:util], latest[:resets]]
       st.merge(proj: Projection.project(*args, rate_window: rate_window),

@@ -61,8 +61,8 @@ module ClaudeLimitWatch
         end
         History.append(rec)
         window = reading[:resets] ? "window ends #{clock(reading[:resets])}" : 'no active window'
-        week = reading[:util_7d] ? "  7d #{format('%3d%%', reading[:util_7d].round)}" : ''
-        puts "#{stamp}  #{format('%3d%%', reading[:util].round)}  #{window}#{week}"
+        week = reading[:util_7d] ? "  7d #{pct(reading[:util_7d])}" : ''
+        puts "#{stamp}  #{pct(reading[:util])}  #{window}#{week}"
       end
     end
 

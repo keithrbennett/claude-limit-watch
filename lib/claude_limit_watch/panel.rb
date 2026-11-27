@@ -59,7 +59,7 @@ module ClaudeLimitWatch
         elapsed = WINDOW_MIN - ((p[:resets] - now) / 60.0)
         window_start = p[:resets] - (WINDOW_MIN * 60)
         used_color = p[:util] >= 100 ? [COLORS[:urgent]] : [] # normal text color unless at the limit
-        out << "  Used   #{bar(p[:util] / 100.0, bar_w, *used_color)}  #{format('%3d%%', p[:util].round)}"
+        out << "  Used   #{bar(p[:util] / 100.0, bar_w, *used_color)}  #{pct(p[:util])}"
         out << "  Time   #{bar(elapsed / WINDOW_MIN, bar_w, *ACCENT_COLOR)}  #{dur_m(elapsed * 60)} of 5h"
         # The window's start and end times, then the current time, under the
         # elapsed time above it.

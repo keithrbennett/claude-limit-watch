@@ -57,6 +57,12 @@ RSpec.describe ClaudeLimitWatch::Format do
     end
   end
 
+  describe '.pct' do
+    it 'rounds to a whole percentage, right-aligned to 3 digits' do
+      expect([0.0, 8.4, 59.5, 100.0].map { |u| m.pct(u) }).to eq(['  0%', '  8%', ' 60%', '100%'])
+    end
+  end
+
   describe '.dur_short' do
     it 'shows days, hours and minutes, or under a day as dur_m does' do
       { 29 => '<1m', 720 => '12m', 3600 + 300 => '1h 05m', 86_400 + (3 * 3600) + 720 => '1d 03h 12m',

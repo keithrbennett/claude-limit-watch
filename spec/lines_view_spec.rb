@@ -60,9 +60,7 @@ RSpec.describe ClaudeLimitWatch::LinesView do
     end
 
     it 'says so, in red, at the 7-day limit' do
-      allow($stdout).to receive(:tty?).and_return(true)
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+      with_colors
       expect(m.idle_line(rec, { util: 100.0, resets: NOW + (27 * 3600) + 600, locked: true }))
         .to eq("\e[38;5;196m08:00 | no active 5-hour window (3% used), " \
                "7-DAY LIMIT, resets Sat 11:10 (in 27h 10m)\e[0m")
@@ -71,9 +69,7 @@ RSpec.describe ClaudeLimitWatch::LinesView do
 
   describe '.stale_line' do
     it 'warns in yellow when colors are on' do
-      allow($stdout).to receive(:tty?).and_return(true)
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('NO_COLOR').and_return(nil)
+      with_colors
       expect(m.stale_line(NOW, NOW - 900, nil, record: true))
         .to eq("\e[38;5;136m08:00 | no new readings for 15m. Restart the viewer, or see recorder.log\e[0m")
     end
@@ -152,12 +148,12 @@ RSpec.describe ClaudeLimitWatch::LinesView do
 
     it 'shows the 7-day usage as the panel does: not once its window has reset, or without a reset time' do
       [NOW - (300 * 60), nil].each do |resets_7d| # reset before every reading; 100% would otherwise be URGENT
-        records = window_records.map { |r| r.merge(util_7d: 100.0, resets_7d: resets_7d) }
+        records = with_week(window_records, 100.0, resets: resets_7d)
         lines = run_once(record: false, pid: nil, records: records).grep(/\A\d\d:\d\d \| (OK|WARN|URGENT)/)
         expect(lines.map { |l| l.split(' | ')[5] }.uniq).to eq(['   -'])
         expect(lines.grep(/7-DAY/)).to be_empty
       end
-      records = window_records.map { |r| r.merge(util_7d: 100.0, resets_7d: NOW + 3600) }
+      records = with_week(window_records, 100.0)
       locked = run_once(record: false, pid: nil, records: records).grep(/URGENT .* 7-DAY LIMIT/)
       expect(locked.size).to eq(window_records.size)
     end

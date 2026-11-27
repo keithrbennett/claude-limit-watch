@@ -14,6 +14,13 @@ module ClaudeLimitWatch
     URGENT_PACE = 2.0         # urgent when burning this many times the sustainable rate
     MIN_ELAPSED_MIN = 30      # no projections until this many minutes into the window
     PROJECTION_WINDOWS = [10, 30, 60, 120].freeze # look-back windows shown on the panel
+    SAME_WINDOW_SECONDS = 60  # reset times this close are the same window's
+
+    # Whether two reset times are the same window's: within a minute, since
+    # the reported reset time can vary slightly between readings.
+    def same_window?(resets, other)
+      (resets - other).abs < SAME_WINDOW_SECONDS
+    end
 
     # Rate (points per minute) over about the last `window` minutes, and the time
     # it actually covers, or nil when the history doesn't reach back far enough

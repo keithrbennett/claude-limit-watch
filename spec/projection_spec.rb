@@ -9,6 +9,12 @@ RSpec.describe ClaudeLimitWatch::Projection do
     minutes_ago.map { |min| { t: NOW - (min * 60), util: util_now - (min * per_min) } }
   end
 
+  describe '.same_window?' do
+    it 'treats reset times within a minute of each other as the same window' do
+      expect([59, -59, 60, -60].map { |s| m.same_window?(NOW, NOW + s) }).to eq([true, true, false, false])
+    end
+  end
+
   describe '.rate_over' do
     it 'needs history' do
       expect(m.rate_over([], NOW, 50.0, 30)).to be_nil

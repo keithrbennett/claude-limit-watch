@@ -15,6 +15,11 @@ module ClaudeLimitWatch
       minutes == minutes.round ? minutes.round.to_s : minutes.to_s
     end
 
+    # A utilization percentage, whole and right-aligned for columns: " 60%".
+    def pct(util)
+      format('%3d%%', util.round)
+    end
+
     # Duration in minutes as h:mm.
     def hm(min)
       min = [min.round, 0].max

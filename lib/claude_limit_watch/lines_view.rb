@@ -45,7 +45,7 @@ module ClaudeLimitWatch
       label = { ok: 'OK    ', projected: 'WARN  ', urgent: 'URGENT' }[week_locked ? :urgent : p[:level]]
       pace = p[:pace]&.finite? ? format('%.1fx', p[:pace]) : 'n/a'
       [clock(now), label, "#{hm(p[:elapsed_min])} of 5:00", clock(p[:resets]),
-        format('%3d%%', p[:util].round), week ? format('%3d%%', week[:util].round) : '   -',
+        pct(p[:util]), week ? pct(week[:util]) : '   -',
         rate_txt.ljust(RATE_COL), pace.rjust(5), outlook].join(' | ')
     end
 
@@ -102,7 +102,7 @@ module ClaudeLimitWatch
           # Start with the readings in the current window (or nothing before now).
           latest = records.reject { |r| r[:error] }.last
           first = latest && latest[:resets] &&
-            records.find { |r| r[:resets] && (r[:resets] - latest[:resets]).abs < 60 }
+            records.find { |r| r[:resets] && Projection.same_window?(r[:resets], latest[:resets]) }
           shown_t = if first
             first[:t] - 1
           else
@@ -118,7 +118,7 @@ module ClaudeLimitWatch
           elsif rec[:resets].nil? || rec[:resets] <= rec[:t]
             puts idle_line(rec, Snapshot.build(records[0..i], rec[:t], rate_window: rate_window)[:week])
           else
-            unless window && (rec[:resets] - window).abs < 60
+            unless window && Projection.same_window?(rec[:resets], window)
               puts paint("-- 5-hour window ends at #{clock(rec[:resets])} --", GRAY) if window
               window = rec[:resets]
             end
