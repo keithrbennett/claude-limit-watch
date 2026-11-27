@@ -163,16 +163,41 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     expect { m.stop }.to output("Stopped the recorder (pid 4321).\n").to_stdout
   end
 
-  it 'starts the recorder in the background, on this history file' do
-    history = ClaudeLimitWatch::History
-    allow(Process).to receive(:spawn).and_return(999)
-    expect(Process).to receive(:detach).with(999)
-    allow(m).to receive(:sleep)
-    allow(m).to receive(:pid).and_return(nil, 999)
-    expect(m.start).to eq(999)
-    expect(Process).to have_received(:spawn).once
-      .with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file', history.file,
-        in: File::NULL, out: [history.log_file, 'a'], err: %i[child out], pgroup: true)
+  describe '.start' do
+    let(:command) { ['nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file'] }
+
+    # Starts the recorder, in the background, and returns what it was spawned
+    # with: the command, then the options hash.
+    def spawn_args
+      args = nil
+      allow(Process).to receive(:spawn) do |*a|
+        args = a
+        999
+      end
+      expect(Process).to receive(:detach).with(999)
+      allow(m).to receive(:sleep)
+      allow(m).to receive(:pid).and_return(nil, 999)
+      expect(m.start).to eq(999)
+      expect(Process).to have_received(:spawn).once
+      args
+    end
+
+    it 'starts the recorder in the background, on this history file' do
+      history = ClaudeLimitWatch::History
+      expect(spawn_args).to eq([*command, history.file,
+        { in: File::NULL, out: [history.log_file, 'a'], err: %i[child out], pgroup: true }])
+    end
+
+    it 'starts the recorder with --utc when the viewer has it' do
+      ClaudeLimitWatch::Format.utc = true
+      expect(spawn_args[0...-1]).to eq([*command, SPEC_HISTORY_FILE, '--utc'])
+    end
+
+    it 'starts the recorder on a history file given with --file' do
+      allow(ClaudeLimitWatch::History).to receive(:file).and_return('/custom/h.jsonl')
+      allow(FileUtils).to receive(:mkdir_p)
+      expect(spawn_args[0...-1]).to eq([*command, '/custom/h.jsonl'])
+    end
   end
 
   describe '.status' do
@@ -185,26 +210,6 @@ RSpec.describe ClaudeLimitWatch::Recorder do
     it 'says when none is' do
       expect(m.status).to eq([nil, 'No recorder is running.'])
     end
-  end
-
-  it 'starts the recorder with --utc when the viewer has it' do
-    ClaudeLimitWatch::Format.utc = true
-    allow(Process).to receive_messages(spawn: 999, detach: nil)
-    allow(m).to receive(:pid).and_return(999)
-    expect(m.start).to eq(999)
-    expect(Process).to have_received(:spawn).once
-      .with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file', SPEC_HISTORY_FILE,
-        '--utc', Hash)
-  end
-
-  it 'starts the recorder on a history file given with --file' do
-    allow(ClaudeLimitWatch::History).to receive(:file).and_return('/custom/h.jsonl')
-    allow(FileUtils).to receive(:mkdir_p)
-    allow(Process).to receive_messages(spawn: 999, detach: nil)
-    allow(m).to receive(:pid).and_return(999)
-    expect(m.start).to eq(999)
-    expect(Process).to have_received(:spawn).once
-      .with('nohup', RbConfig.ruby, ClaudeLimitWatch::EXECUTABLE, 'record', '--file', '/custom/h.jsonl', Hash)
   end
 
   describe '.stop_command' do
