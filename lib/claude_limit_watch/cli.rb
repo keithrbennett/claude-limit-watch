@@ -95,7 +95,8 @@ module ClaudeLimitWatch
       usage_error if rate_window.nil? || args.size > 1
       return Panel.run_once(rate_window) if once
 
-      # Ctrl-C while the recorder starts (up to 2 seconds) exits quietly.
+      # Ctrl-C exits quietly, both while the recorder starts (up to 2 seconds)
+      # and in the lines view; the panel sets its own handler.
       trap('INT') do
         puts
         exit 0

@@ -164,11 +164,14 @@ RSpec.describe ClaudeLimitWatch::CLI, '.main' do
       allow(m).to receive(:trap) # not the spec process's Ctrl-C
     end
 
-    it 'exits quietly on Ctrl-C from before it starts the recorder' do
-      expect(m).to receive(:trap).with('INT').ordered
-      expect(recorder).to receive(:ensure_running).ordered
-      allow(ClaudeLimitWatch::Panel).to receive(:run)
-      m.main([])
+    # The lines view has no handler of its own: it relies on this one.
+    [[[], ClaudeLimitWatch::Panel], [['--lines'], ClaudeLimitWatch::LinesView]].each do |args, view|
+      it "exits quietly on Ctrl-C from before it starts the recorder, with #{args.inspect}" do
+        expect(m).to receive(:trap).with('INT').ordered
+        expect(recorder).to receive(:ensure_running).ordered
+        expect(view).to receive(:run).ordered
+        m.main(args)
+      end
     end
 
     it 'exits with status 0 on that Ctrl-C' do

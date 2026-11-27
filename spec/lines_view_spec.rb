@@ -116,7 +116,6 @@ RSpec.describe ClaudeLimitWatch::LinesView do
       allow(ClaudeLimitWatch::Recorder).to receive(:pid).and_return(pid)
       allow(Time).to receive(:now).and_return(NOW + 900)
       view = ClaudeLimitWatch::LinesView
-      allow(view).to receive(:trap)
       allow(view).to receive(:sleep).and_raise(StopIteration)
       plain(capture_lines { view.run(30, pid, 'recorder message', record: record) })
     end

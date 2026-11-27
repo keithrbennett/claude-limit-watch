@@ -84,12 +84,9 @@ module ClaudeLimitWatch
 
     # Prints a line per reading as they come in, until Ctrl-C. pid and
     # recorder_message: as for intro. record: whether this viewer started the
-    # recorder (false with --no-record).
+    # recorder (false with --no-record). Ctrl-C exits through the CLI's
+    # handler.
     def run(rate_window, pid, recorder_message, record: true)
-      trap('INT') do
-        puts
-        exit 0
-      end
       puts intro(rate_window, pid, recorder_message)
 
       cache = History::Cache.new
