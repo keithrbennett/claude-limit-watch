@@ -51,14 +51,14 @@ module ClaudeLimitWatch
     # A short duration, rounded to the minute: "1d 03h 12m", or under a day,
     # as for dur_m: "3h 12m", "12m", "<1m".
     def dur_short(seconds)
-      m = (seconds / 60.0).round
+      m = whole_minutes(seconds)
       m >= 1440 ? format('%dd %02dh %02dm', m / 1440, m / 60 % 24, m % 60) : dur_m(seconds)
     end
 
     # A duration in words, rounded to the minute: "1 day, 3 hours and 12
     # minutes", "5 minutes", "less than a minute".
     def dur_words(seconds)
-      m = (seconds / 60.0).round
+      m = whole_minutes(seconds)
       return 'less than a minute' if m < 1
 
       parts = [[m / 1440, 'day'], [m / 60 % 24, 'hour'], [m % 60, 'minute']].reject { |n, _| n.zero? }
@@ -75,7 +75,7 @@ module ClaudeLimitWatch
     # Duration, rounded to the minute: "1h 12m", "58m", "<1m". On the panel,
     # that means the text (and the screen) changes only about once a minute.
     def dur_m(seconds)
-      m = (seconds / 60.0).round
+      m = whole_minutes(seconds)
       return '<1m' if m < 1
 
       m >= 60 ? format('%dh %02dm', m / 60, m % 60) : "#{m}m"
@@ -83,6 +83,11 @@ module ClaudeLimitWatch
 
     def home_relative(path)
       path.start_with?("#{Dir.home}/") ? "~#{path[Dir.home.size..]}" : path
+    end
+
+    # Seconds as a whole number of minutes, rounded, as the dur_ methods show.
+    private def whole_minutes(seconds)
+      (seconds / 60.0).round
     end
 
     # The time in the zone times are shown in: local, or UTC with --utc.
